@@ -666,7 +666,7 @@ program.action(async () => {
 
 function showQuickStart() {
   console.log(chalk.white('  Quick start:\n'));
-  console.log(chalk.gray('    Add shadcn design system   ') + chalk.cyan('figma-ds-cli tokens preset shadcn'));
+  console.log(chalk.gray('    Add shadcn colors   ') + chalk.cyan('figma-ds-cli tokens preset shadcn'));
   console.log(chalk.gray('    Create a rectangle         ') + chalk.cyan('figma-ds-cli create rect "Card" --fill "#3b82f6"'));
   console.log(chalk.gray('    Render JSX to Figma        ') + chalk.cyan('figma-ds-cli render \'<Frame>...</Frame>\''));
   console.log(chalk.gray('    List all variables         ') + chalk.cyan('figma-ds-cli var list'));
@@ -781,7 +781,7 @@ program
     console.log(chalk.green('\n  ✓ Setup complete!\n'));
 
     console.log(chalk.white('  Quick start:\n'));
-    console.log(chalk.gray('    Add shadcn design system  ') + chalk.cyan('figma-ds-cli tokens preset shadcn'));
+    console.log(chalk.gray('    Add shadcn colors  ') + chalk.cyan('figma-ds-cli tokens preset shadcn'));
     console.log(chalk.gray('    Create a rectangle        ') + chalk.cyan('figma-ds-cli create rect "Card" --fill "#3b82f6"'));
     console.log(chalk.gray('    Render JSX to Figma       ') + chalk.cyan('figma-ds-cli render \'<Frame>...</Frame>\''));
     console.log(chalk.gray('    See all commands          ') + chalk.cyan('figma-ds-cli --help'));
@@ -1505,8 +1505,8 @@ tokens
     const presetLower = preset.toLowerCase();
 
     if (presetLower === 'shadcn') {
-      // shadcn/ui design system with primitives + semantic tokens (Light/Dark)
-      const spinner = ora('Adding shadcn design system...').start();
+      // shadcn/ui colors: primitives + semantic tokens (Light/Dark)
+      const spinner = ora('Adding shadcn colors...').start();
 
       // Tailwind primitives (same as shadcn uses)
       const primitives = {
@@ -1649,10 +1649,10 @@ return 'Created ' + primCount + ' primitives + ' + semCount + ' semantic tokens 
 
       try {
         const result = await fastEval(code);
-        spinner.succeed(result || 'Added shadcn design system');
+        spinner.succeed(result || 'Added shadcn colors');
         console.log(chalk.gray('\n  Collections created:'));
         console.log(chalk.gray('    • shadcn/primitives - 244 color primitives'));
-        console.log(chalk.gray('    • shadcn/semantic   - 28 semantic tokens (Light/Dark mode)\n'));
+        console.log(chalk.gray('    • shadcn/semantic   - 32 semantic tokens (Light/Dark mode)\n'));
         console.log(chalk.gray('  Usage: Apply "Light" or "Dark" mode to any frame'));
       } catch (error) {
         spinner.fail('Failed to add shadcn');
