@@ -286,12 +286,15 @@ When setup is complete, show these natural language examples (NOT CLI commands):
 ```
 Ready! Try asking:
 
+"Add shadcn colors to my project"
 "Create a blue rectangle"
-"Add Tailwind colors to my file"
 "Create a card with title and description"
 "Show me what's on the canvas"
-"Find all frames named Button"
 ```
+
+The shadcn preset (`tokens preset shadcn`) creates:
+- 244 primitive colors (Tailwind palette)
+- 32 semantic tokens with Light/Dark mode (background, foreground, primary, etc.)
 
 IMPORTANT: Never show `node src/index.js` commands to designers. They just type natural language and you execute the right commands.
 
