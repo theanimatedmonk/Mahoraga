@@ -1076,6 +1076,126 @@ variables
   });
 
 variables
+  .command('visualize [collection]')
+  .description('Create color swatches on canvas for all color variables')
+  .option('-s, --size <n>', 'Swatch size', '40')
+  .option('-g, --gap <n>', 'Gap between swatches', '4')
+  .action(async (collection, options) => {
+    checkConnection();
+    const spinner = ora('Creating color swatches...').start();
+
+    const size = parseInt(options.size) || 40;
+    const gap = parseInt(options.gap) || 4;
+
+    const code = `(async () => {
+await figma.loadFontAsync({ family: 'Inter', style: 'Medium' });
+
+const collections = await figma.variables.getLocalVariableCollectionsAsync();
+const colorVars = await figma.variables.getLocalVariablesAsync('COLOR');
+
+const targetCols = ${collection ? `collections.filter(c => c.name.toLowerCase().includes('${collection}'.toLowerCase()))` : 'collections'};
+if (targetCols.length === 0) return 'No collections found';
+
+let startX = 0;
+figma.currentPage.children.forEach(n => {
+  startX = Math.max(startX, n.x + (n.width || 0));
+});
+startX += 100;
+
+let totalSwatches = 0;
+
+for (const col of targetCols) {
+  const colVars = colorVars.filter(v => v.variableCollectionId === col.id);
+  if (colVars.length === 0) continue;
+
+  // Group by prefix
+  const groups = {};
+  colVars.forEach(v => {
+    const parts = v.name.split('/');
+    const prefix = parts.length > 1 ? parts[0] : 'colors';
+    if (!groups[prefix]) groups[prefix] = [];
+    groups[prefix].push(v);
+  });
+
+  // Create container
+  const container = figma.createFrame();
+  container.name = col.name + ' Palette';
+  container.x = startX;
+  container.y = 0;
+  container.layoutMode = 'VERTICAL';
+  container.primaryAxisSizingMode = 'AUTO';
+  container.counterAxisSizingMode = 'AUTO';
+  container.itemSpacing = 16;
+  container.paddingTop = 24;
+  container.paddingBottom = 24;
+  container.paddingLeft = 24;
+  container.paddingRight = 24;
+  container.fills = [{ type: 'SOLID', color: { r: 0.98, g: 0.98, b: 0.98 } }];
+  container.cornerRadius = 16;
+
+  const modeId = col.modes[0].modeId;
+  const swatchesToBind = [];
+
+  // Sort groups alphabetically
+  const sortedGroups = Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+
+  for (const [groupName, vars] of sortedGroups) {
+    const row = figma.createFrame();
+    row.name = groupName;
+    row.layoutMode = 'HORIZONTAL';
+    row.primaryAxisSizingMode = 'AUTO';
+    row.counterAxisSizingMode = 'AUTO';
+    row.itemSpacing = ${gap};
+    row.fills = [];
+    container.appendChild(row);
+
+    vars.sort((a, b) => {
+      const aNum = parseInt(a.name.split('/').pop()) || 0;
+      const bNum = parseInt(b.name.split('/').pop()) || 0;
+      return aNum - bNum;
+    });
+
+    for (const v of vars) {
+      const swatch = figma.createFrame();
+      swatch.name = v.name.split('/').pop();
+      swatch.resize(${size}, ${size});
+      swatch.cornerRadius = 4;
+      swatch.fills = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.9 } }];
+      row.appendChild(swatch);
+      swatchesToBind.push({ swatch, variable: v, modeId });
+      totalSwatches++;
+    }
+  }
+
+  // Bind variables after appending (prevents race condition)
+  for (const { swatch, variable, modeId } of swatchesToBind) {
+    const value = variable.valuesByMode[modeId];
+    if (value && value.type !== 'VARIABLE_ALIAS') {
+      try {
+        swatch.fills = [figma.variables.setBoundVariableForPaint(
+          { type: 'SOLID', color: value }, 'color', variable
+        )];
+      } catch (e) {}
+    }
+  }
+
+  startX += container.width + 40;
+}
+
+figma.viewport.scrollAndZoomIntoView(figma.currentPage.children.slice(-targetCols.length));
+return 'Created ' + totalSwatches + ' color swatches';
+})()`;
+
+    try {
+      const result = await fastEval(code);
+      spinner.succeed(result || 'Created color swatches');
+    } catch (error) {
+      spinner.fail('Failed to create swatches');
+      console.error(chalk.red(error.message));
+    }
+  });
+
+variables
   .command('create-batch <json>')
   .description('Create multiple variables at once (faster than individual calls)')
   .requiredOption('-c, --collection <id>', 'Collection ID or name')
