@@ -137,7 +137,10 @@ node src/index.js node delete "1:234"          # Delete by ID
 ```bash
 node src/index.js export css                   # Variables as CSS
 node src/index.js export tailwind              # Tailwind config
-node src/index.js export screenshot -o out.png # Screenshot
+node src/index.js export screenshot -o out.png # Viewport screenshot
+node src/index.js export node "1:234" -o card.png         # Export node by ID
+node src/index.js export node "1:234" -s 2 -f png         # 2x scale PNG
+node src/index.js export node "1:234" -f svg -o card.svg  # SVG export
 node src/index.js export-jsx "1:234"           # Export as JSX
 node src/index.js export-jsx "1:234" -o Card.jsx --pretty
 node src/index.js export-storybook "1:234"     # Storybook stories

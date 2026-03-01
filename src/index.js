@@ -4668,6 +4668,42 @@ exp
   });
 
 exp
+  .command('node <nodeId>')
+  .description('Export a node by ID as PNG')
+  .option('-o, --output <file>', 'Output file', 'node-export.png')
+  .option('-s, --scale <number>', 'Export scale', '2')
+  .option('-f, --format <format>', 'Format: png, svg, pdf, jpg', 'png')
+  .action((nodeId, options) => {
+    checkConnection();
+    const format = options.format.toUpperCase();
+    const scale = parseFloat(options.scale);
+    const code = `(async () => {
+const node = await figma.getNodeByIdAsync('${nodeId}');
+if (!node) return { error: 'Node not found: ${nodeId}' };
+if (!('exportAsync' in node)) return { error: 'Node cannot be exported' };
+const bytes = await node.exportAsync({ format: '${format}', constraint: { type: 'SCALE', value: ${scale} } });
+return {
+  name: node.name,
+  id: node.id,
+  width: node.width,
+  height: node.height,
+  bytes: Array.from(bytes)
+};
+})()`;
+    const result = figmaEvalSync(code);
+    if (result.error) {
+      console.error(chalk.red('✗'), result.error);
+      process.exit(1);
+    }
+    const buffer = Buffer.from(result.bytes);
+    const outputFile = options.output === 'node-export.png' && format !== 'PNG'
+      ? `node-export.${format.toLowerCase()}`
+      : options.output;
+    writeFileSync(outputFile, buffer);
+    console.log(chalk.green('✓'), `Exported ${result.name} (${result.width}x${result.height}) to ${outputFile}`);
+  });
+
+exp
   .command('css')
   .description('Export variables as CSS custom properties')
   .action(() => {
