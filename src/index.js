@@ -72,80 +72,49 @@ async function daemonExec(action, data = {}) {
   return result.result;
 }
 
-// Fast eval via daemon (falls back to figma-use if all else fails)
+// Fast eval via daemon (falls back to direct connection)
 async function fastEval(code) {
   // Try daemon first
   if (isDaemonRunning()) {
     try {
       return await daemonExec('eval', { code });
     } catch (e) {
-      // Continue to fallbacks
+      // Continue to fallback
     }
   }
 
-  // Try direct connection
-  try {
-    const client = await getFigmaClient();
-    return await client.eval(code);
-  } catch (e) {
-    // Fall back to npx figma-use
-    const tempFile = '/tmp/figma-eval-' + Date.now() + '.js';
-    writeFileSync(tempFile, code);
-    try {
-      const output = execSync(`npx figma-use eval "$(cat ${tempFile})"`, {
-        encoding: 'utf8',
-        stdio: 'pipe',
-        timeout: 30000
-      });
-      unlinkSync(tempFile);
-      try {
-        return JSON.parse(output.trim());
-      } catch {
-        return output.trim();
-      }
-    } finally {
-      try { unlinkSync(tempFile); } catch {}
-    }
-  }
+  // Fall back to direct connection
+  const client = await getFigmaClient();
+  return await client.eval(code);
 }
 
-// Fast render via daemon (falls back to figma-use)
+// Fast render via daemon (falls back to direct connection)
 async function fastRender(jsx) {
   // Try daemon first
   if (isDaemonRunning()) {
     try {
       return await daemonExec('render', { jsx });
     } catch (e) {
-      // Continue to fallbacks
+      // Continue to fallback
     }
   }
 
-  // Try direct connection
-  try {
-    const client = await getFigmaClient();
-    return await client.render(jsx);
-  } catch (e) {
-    // Fall back to npx figma-use
-    const { FigmaClient } = await import('./figma-client.js');
-    const tempClient = new FigmaClient();
-    const code = tempClient.parseJSX(jsx);
+  // Fall back to direct connection
+  const client = await getFigmaClient();
+  return await client.render(jsx);
+}
 
-    const tempFile = '/tmp/figma-render-' + Date.now() + '.js';
-    writeFileSync(tempFile, code);
-    try {
-      const output = execSync(`npx figma-use eval "$(cat ${tempFile})"`, {
-        encoding: 'utf8',
-        stdio: 'pipe',
-        timeout: 30000
-      });
-      unlinkSync(tempFile);
-      try {
-        return JSON.parse(output.trim());
-      } catch {
-        return { id: 'unknown', name: jsx.match(/name="([^"]+)"/)?.[1] || 'Frame' };
-      }
-    } finally {
-      try { unlinkSync(tempFile); } catch {}
+// Helper: run figma-use commands with Node 20+ compatibility warning
+function runFigmaUse(cmd, options = {}) {
+  try {
+    execSync(cmd, { stdio: options.stdio || 'inherit', timeout: options.timeout || 60000 });
+  } catch (error) {
+    if (error.message?.includes('enableCompileCache')) {
+      console.log(chalk.red('\n✗ figma-use is broken on Node.js ' + process.version));
+      console.log(chalk.yellow('  This is a known upstream bug (enableCompileCache not available in ESM).'));
+      console.log(chalk.gray('  Workaround: use Node.js 18.x, or wait for a figma-use update.\n'));
+    } else {
+      throw error;
     }
   }
 }
@@ -3394,16 +3363,9 @@ ${[...fonts].map(f => {
   return "Recreated ${data.elements.length} elements from ${url}";
 })()`;
 
-      // Step 3: Execute via daemon (fast) or figma-use (fallback)
+      // Step 3: Execute via daemon (fast) or direct connection (fallback)
       spinner.text = 'Creating in Figma...';
-
-      if (isDaemonRunning()) {
-        await daemonExec('eval', { code: figmaCode });
-      } else {
-        const figmaScriptPath = '/tmp/figma-recreate-build.js';
-        writeFileSync(figmaScriptPath, figmaCode);
-        execSync(`npx figma-use eval "$(cat ${figmaScriptPath})"`, { stdio: 'pipe', timeout: 60000 });
-      }
+      await fastEval(figmaCode);
 
       spinner.succeed('Page recreated in Figma');
       console.log(chalk.green('✓ ') + chalk.white(`Created ${data.elements.length} elements`));
@@ -5081,11 +5043,7 @@ program
     if (options.rule) options.rule.forEach(r => cmd += ` --rule ${r}`);
     if (options.preset) cmd += ` --preset ${options.preset}`;
     if (options.json) cmd += ' --json';
-    try {
-      execSync(cmd, { stdio: 'inherit', timeout: 60000 });
-    } catch (error) {
-      // figma-use exits with error if issues found, that's ok
-    }
+    runFigmaUse(cmd);
   });
 
 const analyze = program
@@ -5100,7 +5058,7 @@ analyze
     checkConnection();
     let cmd = 'npx figma-use analyze colors';
     if (options.json) cmd += ' --json';
-    execSync(cmd, { stdio: 'inherit', timeout: 60000 });
+    runFigmaUse(cmd);
   });
 
 analyze
@@ -5112,7 +5070,7 @@ analyze
     checkConnection();
     let cmd = 'npx figma-use analyze typography';
     if (options.json) cmd += ' --json';
-    execSync(cmd, { stdio: 'inherit', timeout: 60000 });
+    runFigmaUse(cmd);
   });
 
 analyze
@@ -5123,7 +5081,7 @@ analyze
     checkConnection();
     let cmd = 'npx figma-use analyze spacing';
     if (options.json) cmd += ' --json';
-    execSync(cmd, { stdio: 'inherit', timeout: 60000 });
+    runFigmaUse(cmd);
   });
 
 analyze
@@ -5134,7 +5092,7 @@ analyze
     checkConnection();
     let cmd = 'npx figma-use analyze clusters';
     if (options.json) cmd += ' --json';
-    execSync(cmd, { stdio: 'inherit', timeout: 60000 });
+    runFigmaUse(cmd);
   });
 
 // ============ NODE OPERATIONS (figma-use) ============
@@ -5152,7 +5110,7 @@ node
     let cmd = 'npx figma-use node tree';
     if (nodeId) cmd += ` "${nodeId}"`;
     cmd += ` --depth ${options.depth}`;
-    execSync(cmd, { stdio: 'inherit', timeout: 60000 });
+    runFigmaUse(cmd);
   });
 
 node
@@ -5162,7 +5120,7 @@ node
     checkConnection();
     let cmd = 'npx figma-use node bindings';
     if (nodeId) cmd += ` "${nodeId}"`;
-    execSync(cmd, { stdio: 'inherit', timeout: 60000 });
+    runFigmaUse(cmd);
   });
 
 node
@@ -5171,7 +5129,7 @@ node
   .action((nodeIds) => {
     checkConnection();
     const cmd = `npx figma-use node to-component "${nodeIds.join(' ')}"`;
-    execSync(cmd, { stdio: 'inherit', timeout: 60000 });
+    runFigmaUse(cmd);
   });
 
 node
@@ -5180,7 +5138,7 @@ node
   .action((nodeIds) => {
     checkConnection();
     const cmd = `npx figma-use node delete "${nodeIds.join(' ')}"`;
-    execSync(cmd, { stdio: 'inherit', timeout: 60000 });
+    runFigmaUse(cmd);
   });
 
 // ============ EXPORT (figma-use) ============
@@ -5199,9 +5157,9 @@ program
     if (options.matchIcons) cmd += ' --match-icons';
     if (options.output) {
       cmd += ` > "${options.output}"`;
-      execSync(cmd, { shell: true, stdio: 'inherit', timeout: 60000 });
+      runFigmaUse(cmd, { stdio: 'inherit' });
     } else {
-      execSync(cmd, { stdio: 'inherit', timeout: 60000 });
+      runFigmaUse(cmd);
     }
   });
 
@@ -5215,9 +5173,9 @@ program
     if (nodeId) cmd += ` "${nodeId}"`;
     if (options.output) {
       cmd += ` > "${options.output}"`;
-      execSync(cmd, { shell: true, stdio: 'inherit', timeout: 60000 });
+      runFigmaUse(cmd, { stdio: 'inherit' });
     } else {
-      execSync(cmd, { stdio: 'inherit', timeout: 60000 });
+      runFigmaUse(cmd);
     }
   });
 

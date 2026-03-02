@@ -29,7 +29,8 @@
     "url": "https://github.com/silships/figma-cli/issues"
   },
   "scripts": {
-    "setup-alias": "bash bin/setup-alias.sh"
+    "setup-alias": "bash bin/setup-alias.sh",
+    "test": "node --test tests/*.test.js"
   },
   "engines": {
     "node": ">=18"
