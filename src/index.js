@@ -4776,7 +4776,7 @@ program
 
 program
   .command('render-batch')
-  .description('Render multiple JSX frames (uses figma-use render)')
+  .description('Render multiple JSX frames in a single fast operation')
   .argument('<jsxArray>', 'JSON array of JSX strings, e.g. \'["<Frame>...</Frame>","<Frame>...</Frame>"]\'')
   .option('-g, --gap <n>', 'Gap between frames', '40')
   .option('-d, --direction <dir>', 'Layout direction: row (horizontal) or col (vertical)', 'row')
@@ -4790,55 +4790,65 @@ program
 
       const gap = parseInt(options.gap) || 40;
       const vertical = options.direction === 'col' || options.direction === 'column' || options.direction === 'vertical';
-      let currentX = vertical ? 0 : getNextFreeX(gap);
-      let currentY = vertical ? getNextFreeY(gap) : 0;
-      let results = [];
+      const startX = vertical ? 100 : getNextFreeX(gap);
+      const startY = vertical ? getNextFreeY(gap) : 100;
 
-      for (const jsx of jsxArray) {
-        try {
-          let result;
+      // Parse all JSX to code blocks
+      const { FigmaClient } = await import('./figma-client.js');
+      const parser = new FigmaClient();
 
-          // Use our parser if var: syntax detected (fast variable binding)
-          if (jsx.includes('var:')) {
-            const { FigmaClient } = await import('./figma-client.js');
-            const client = new FigmaClient();
-            // Inject position into JSX
-            const positionedJsx = jsx.replace(/<Frame\s+/, `<Frame x={${currentX}} y={${currentY}} `);
-            const code = client.parseJSX(positionedJsx);
-            result = await daemonExec('eval', { code });
-          } else {
-            const cmd = `figma-use render --stdin --json --x ${currentX} --y ${currentY}`;
-            const output = execSync(cmd, {
-              input: jsx,
-              encoding: 'utf8',
-              stdio: ['pipe', 'pipe', 'pipe'],
-              timeout: 30000
-            });
-            result = JSON.parse(output.trim());
-          }
+      // Parse each JSX and wrap to capture result
+      const codeBlocks = jsxArray.map(jsx => {
+        const code = parser.parseJSX(jsx);
+        // Wrap the IIFE to capture result, replace smart positioning
+        return code
+          .replace(/let smartX[\s\S]*?smartX = Math\.round\(maxRight \+ 100\);\s*\}\s*/, '')
+          .replace(/frame\.x = smartX;/, 'frame.x = currentX;')
+          .replace(/frame\.y = 0;/, 'frame.y = currentY;');
+      });
 
-          results.push(result);
-          console.log(chalk.green('✓ Rendered: ' + result.id + (result.name ? ' (' + result.name + ')' : '')));
+      // Build single eval that creates all frames
+      const batchCode = `(async () => {
+        await figma.loadFontAsync({family:"Inter",style:"Regular"});
+        await figma.loadFontAsync({family:"Inter",style:"Medium"});
+        await figma.loadFontAsync({family:"Inter",style:"Semi Bold"});
+        await figma.loadFontAsync({family:"Inter",style:"Bold"});
 
-          // Get size of created frame for next position
-          try {
-            if (vertical) {
-              const height = figmaEvalSync(`(async () => { const n = await figma.getNodeByIdAsync('${result.id}'); return n ? n.height : 200; })()`);
-              currentY += (height || 200) + gap;
-            } else {
-              const width = figmaEvalSync(`(async () => { const n = await figma.getNodeByIdAsync('${result.id}'); return n ? n.width : 300; })()`);
-              currentX += (width || 300) + gap;
+        const results = [];
+        let currentX = ${startX}, currentY = ${startY};
+        const gap = ${gap};
+        const vertical = ${vertical};
+
+        ${codeBlocks.map((code, i) => `
+        // Frame ${i + 1}
+        {
+          const frameResult = await (async function() {
+            ${code.replace(/^\s*\(async function\(\) \{/, '').replace(/\}\)\(\)\s*$/, '')}
+          })();
+          if (frameResult) {
+            const frame = await figma.getNodeByIdAsync(frameResult.id);
+            if (frame) {
+              frame.x = currentX;
+              frame.y = currentY;
+              results.push({ id: frame.id, name: frame.name });
+              if (vertical) currentY += frame.height + gap;
+              else currentX += frame.width + gap;
             }
-          } catch {
-            if (vertical) currentY += 200 + gap;
-            else currentX += 300 + gap;
           }
-        } catch (err) {
-          console.log(chalk.red('✗ Failed to render: ' + (err.stderr || err.message)));
         }
-      }
+        `).join('\n')}
 
-      console.log(chalk.cyan(`\n${results.length} frames created`));
+        return results;
+      })()`;
+
+      const results = await fastEval(batchCode);
+
+      if (Array.isArray(results)) {
+        results.forEach(r => {
+          console.log(chalk.green('✓ Rendered: ' + r.id + (r.name ? ' (' + r.name + ')' : '')));
+        });
+        console.log(chalk.cyan(`\n${results.length} frames created`));
+      }
     } catch (e) {
       console.log(chalk.red('✗ Batch render failed: ' + e.message));
     }
