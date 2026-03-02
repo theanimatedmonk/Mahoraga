@@ -367,11 +367,12 @@ export class FigmaClient {
     const frameRanges = [];
 
     // Find all nested Frame elements using balanced tag matching
-    const frameOpenRegex = /<Frame\s+([^>]*)>/g;
+    // Use \s* to allow frames with or without attributes
+    const frameOpenRegex = /<Frame(?:\s+([^>]*?))?>/g;
     let match;
 
     while ((match = frameOpenRegex.exec(childrenStr)) !== null) {
-      const frameProps = this.parseProps(match[1]);
+      const frameProps = this.parseProps(match[1] || '');
       frameProps._type = 'frame';
       frameProps._index = match.index;
 
@@ -394,13 +395,14 @@ export class FigmaClient {
     }
 
     // Parse Text elements, but skip those inside nested Frames
-    const textRegex = /<Text\s+([^>]*)>([^<]*)<\/Text>/g;
+    // Use (?:\s+([^>]*?))? to allow Text with or without attributes
+    const textRegex = /<Text(?:\s+([^>]*?))?>([^<]*)<\/Text>/g;
     while ((match = textRegex.exec(childrenStr)) !== null) {
       const idx = match.index;
       // Check if this text is inside a nested frame
       const insideFrame = frameRanges.some(r => idx >= r.start && idx < r.end);
       if (!insideFrame) {
-        const textProps = this.parseProps(match[1]);
+        const textProps = this.parseProps(match[1] || '');
         textProps._type = 'text';
         textProps.content = match[2];
         textProps._index = idx;
@@ -409,12 +411,13 @@ export class FigmaClient {
     }
 
     // Parse Rectangle elements (self-closing)
-    const rectRegex = /<(?:Rectangle|Rect)\s+([^/]*)\s*\/>/g;
+    // Use (?:\s+([^/]*?))? to allow Rect with or without attributes
+    const rectRegex = /<(?:Rectangle|Rect)(?:\s+([^/]*?))?\s*\/>/g;
     while ((match = rectRegex.exec(childrenStr)) !== null) {
       const idx = match.index;
       const insideFrame = frameRanges.some(r => idx >= r.start && idx < r.end);
       if (!insideFrame) {
-        const rectProps = this.parseProps(match[1]);
+        const rectProps = this.parseProps(match[1] || '');
         rectProps._type = 'rect';
         rectProps._index = idx;
         children.push(rectProps);
