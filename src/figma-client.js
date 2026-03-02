@@ -14,6 +14,8 @@ export class FigmaClient {
     this.msgId = 0;
     this.callbacks = new Map();
     this.pageTitle = null;
+    this.pageUrl = null;
+    this.fileType = null; // 'design', 'file', or 'unknown'
     this.executionContextId = null; // For Figma v39+ sandboxed context
   }
 
@@ -52,17 +54,15 @@ export class FigmaClient {
     const pages = await response.json();
 
     // Find design/file pages (not feed, home, etc.)
+    // Use regex with trailing slash to avoid matching /files/ (feed/home pages)
+    const isDesignPage = (p) =>
+      p.url && /figma\.com\/(design|file)\//.test(p.url);
+
     let page;
     if (pageTitle) {
-      page = pages.find(p =>
-        p.title.includes(pageTitle) &&
-        (p.url?.includes('figma.com/design') || p.url?.includes('figma.com/file'))
-      );
+      page = pages.find(p => p.title.includes(pageTitle) && isDesignPage(p));
     } else {
-      // First design/file page (like figma-use does)
-      page = pages.find(p =>
-        p.url?.includes('figma.com/design') || p.url?.includes('figma.com/file')
-      );
+      page = pages.find(isDesignPage);
     }
 
     if (!page) {
@@ -70,6 +70,11 @@ export class FigmaClient {
     }
 
     this.pageTitle = page.title;
+    this.pageUrl = page.url;
+
+    // Detect file type from URL
+    const typeMatch = page.url.match(/figma\.com\/(design|file)\//);
+    this.fileType = typeMatch ? typeMatch[1] : 'unknown';
 
     return new Promise((resolve, reject) => {
       this.ws = new WebSocket(page.webSocketDebuggerUrl);
