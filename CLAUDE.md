@@ -19,6 +19,9 @@ CLI that controls Figma Desktop directly. No API key needed.
 | "export as PNG/SVG" | `node src/index.js export png` |
 | "show all variants" | `node src/index.js combos` |
 | "create size variants" | `node src/index.js sizes --base small` |
+| "create a slot" | `node src/index.js slot create "Name"` |
+| "list slots" | `node src/index.js slot list` |
+| "reset slot" | `node src/index.js slot reset` |
 
 **Full command reference:** See REFERENCE.md
 
@@ -200,6 +203,94 @@ node src/index.js render '<Frame name="Landing Page" w={1440} flex="col" bg="#0a
   </Frame>
 </Frame>'
 ```
+
+---
+
+## Slots
+
+Figma's native slots feature allows flexible content areas in components. Slots let designers add, remove, and reorder content in instances without detaching.
+
+### Slot Commands
+
+```bash
+# Create slot on selected component
+node src/index.js slot create "Content" --flex col --gap 8 --padding 16
+
+# List slots in component
+node src/index.js slot list
+node src/index.js slot list "component-id"
+
+# Set preferred components for a slot
+node src/index.js slot preferred "Slot#1:2" "component-id-1" "component-id-2"
+
+# Reset slot in instance to defaults
+node src/index.js slot reset
+node src/index.js slot reset "slot-node-id"
+
+# Convert frame to slot (must be inside component)
+node src/index.js slot convert --name "Actions"
+
+# Add content to slot in instance
+node src/index.js slot add "slot-id" --component "component-id"
+node src/index.js slot add "slot-id" --frame
+node src/index.js slot add "slot-id" --text "Hello"
+```
+
+### JSX Slot Syntax
+
+Use `<Slot>` in JSX to create slots. When parent is a component, creates real SLOT. Otherwise falls back to frame.
+
+```jsx
+<Frame name="Card" w={300} h={200} bg="#18181b" rounded={12} flex="col" p={16} gap={12}>
+  <Text size={18} weight="bold" color="#fff">Card Title</Text>
+  <Slot name="Content" flex="col" gap={8} w="fill">
+    <Text size={14} color="#a1a1aa">Default slot content</Text>
+  </Slot>
+</Frame>
+```
+
+**Slot props:**
+- `name` - Slot name (shown in properties panel)
+- `flex` - Layout direction: "row" or "col"
+- `gap` - Spacing between items
+- `p`, `px`, `py` - Padding
+- `w`, `h` - Size ("fill" or fixed)
+- `bg` - Background fill
+
+**Self-closing slot (empty):**
+```jsx
+<Slot name="Actions" flex="row" gap={8} />
+```
+
+### Slot Workflow
+
+1. **Create component with slot:**
+```bash
+# Render component structure
+node src/index.js render '<Frame name="Card" ...>
+  <Slot name="Content" flex="col" w="fill" />
+</Frame>'
+
+# Convert to component
+node src/index.js node to-component "frame-id"
+```
+
+2. **Or add slot to existing component:**
+```bash
+# Select component, then:
+node src/index.js slot create "Content" --flex col --gap 8
+```
+
+3. **Set preferred components:**
+```bash
+node src/index.js slot preferred "Slot#1:2" "button-comp-id" "icon-comp-id"
+```
+
+4. **In instances, slots allow:**
+- Adding any content (or only preferred if set)
+- Reordering children
+- Removing children
+- Reset to defaults with `slot reset`
 
 ---
 

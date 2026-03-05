@@ -55,21 +55,46 @@ function isDaemonRunning() {
 }
 
 // Send command to daemon (uses native fetch in Node 18+)
-async function daemonExec(action, data = {}) {
+async function daemonExec(action, data = {}, timeoutMs = 90000) {
   const token = getDaemonToken();
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['X-Daemon-Token'] = token;
 
-  const response = await fetch(`http://localhost:${DAEMON_PORT}/exec`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ action, ...data }),
-    signal: AbortSignal.timeout(60000)
-  });
+  try {
+    const response = await fetch(`http://localhost:${DAEMON_PORT}/exec`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ action, ...data }),
+      signal: AbortSignal.timeout(timeoutMs)
+    });
 
-  const result = await response.json();
-  if (result.error) throw new Error(result.error);
-  return result.result;
+    if (!response.ok) {
+      const text = await response.text();
+      // Try to parse as JSON error from daemon
+      try {
+        const errObj = JSON.parse(text);
+        if (errObj.error) {
+          // Clean up error: remove stack trace line numbers for cleaner output
+          const cleanError = errObj.error.split('\n')[0];
+          throw new Error(cleanError);
+        }
+      } catch (parseErr) {
+        if (parseErr.message && !parseErr.message.includes('JSON')) {
+          throw parseErr; // Re-throw our clean error
+        }
+      }
+      throw new Error(`HTTP ${response.status}: ${text}`);
+    }
+
+    const result = await response.json();
+    if (result.error) throw new Error(result.error);
+    return result.result;
+  } catch (e) {
+    if (e.name === 'TimeoutError' || e.message.includes('timeout')) {
+      throw new Error(`Execution timeout (${timeoutMs/1000}s). Try reconnecting: node src/index.js connect`);
+    }
+    throw e;
+  }
 }
 
 // Fast eval via daemon (falls back to direct connection)
@@ -4718,8 +4743,10 @@ program
         posX = getNextFreeX();
       }
 
-      // Check if JSX uses variable syntax (var:name) - use our own renderer
-      if (jsx.includes('var:')) {
+      // Check if JSX uses features that require our own renderer:
+      // - var:name syntax for variable binding
+      // - <Slot> elements for component slots
+      if (jsx.includes('var:') || jsx.includes('<Slot')) {
         const { FigmaClient } = await import('./figma-client.js');
         const client = new FigmaClient();
         const code = client.parseJSX(jsx);
@@ -4989,11 +5016,39 @@ const exp = program
 
 exp
   .command('screenshot')
-  .description('Take a screenshot')
+  .description('Take a screenshot of selected node or current page')
   .option('-o, --output <file>', 'Output file', 'screenshot.png')
+  .option('-s, --scale <number>', 'Export scale (1-4)', '2')
+  .option('-f, --format <format>', 'Format: png, jpg, svg, pdf', 'png')
   .action((options) => {
     checkConnection();
-    figmaUse(`export screenshot --output "${options.output}"`);
+    const format = options.format.toUpperCase();
+    const scale = parseFloat(options.scale);
+    const code = `(async () => {
+const sel = figma.currentPage.selection;
+const node = sel.length > 0 ? sel[0] : figma.currentPage;
+if (!node) return { error: 'No page or selection' };
+if (!('exportAsync' in node)) return { error: 'Node cannot be exported' };
+const bytes = await node.exportAsync({ format: '${format}', constraint: { type: 'SCALE', value: ${scale} } });
+return {
+  name: node.name,
+  id: node.id,
+  width: Math.round(node.width * ${scale}),
+  height: Math.round(node.height * ${scale}),
+  bytes: Array.from(bytes)
+};
+})()`;
+    const result = figmaEvalSync(code);
+    if (result.error) {
+      console.error(chalk.red('✗'), result.error);
+      process.exit(1);
+    }
+    const buffer = Buffer.from(result.bytes);
+    const outputFile = options.output === 'screenshot.png' && format !== 'PNG'
+      ? `screenshot.${format.toLowerCase()}`
+      : options.output;
+    writeFileSync(outputFile, buffer);
+    console.log(chalk.green('✓'), `Screenshot: ${result.name} (${result.width}x${result.height}) → ${outputFile}`);
   });
 
 exp
@@ -5103,8 +5158,8 @@ program
       return;
     }
 
-    // Use async daemon for file-based execution (more reliable for long scripts)
-    if (options.file && isDaemonRunning()) {
+    // Always prefer async daemon (more reliable, no shell timeout issues)
+    if (isDaemonRunning()) {
       try {
         const result = await daemonExec('eval', { code: jsCode });
         if (result !== undefined && result !== null) {
@@ -5112,11 +5167,24 @@ program
         }
         return;
       } catch (e) {
-        // Fall through to sync path
+        // Check if this is a connection/daemon error vs user code error
+        const isConnectionError = e.message.includes('ECONNREFUSED') ||
+                                  e.message.includes('fetch failed') ||
+                                  e.message.includes('network') ||
+                                  e.message.includes('timeout') ||
+                                  e.message.includes('disconnected');
+        if (isConnectionError) {
+          // Connection/daemon error - fall back to sync path
+          console.log(chalk.yellow('⚠ Daemon error, trying sync path...'));
+        } else {
+          // User code error - display directly, don't fall back
+          console.log(chalk.red('✗ ' + e.message));
+          return;
+        }
       }
     }
 
-    // Sync path for inline code or fallback
+    // Sync fallback (when daemon not running)
     try {
       const result = figmaEvalSync(jsCode);
       if (result !== undefined && result !== null) {
@@ -5644,6 +5712,448 @@ node
       // Yolo Mode: use figma-use
       const cmd = `npx figma-use node delete "${nodeIds.join(' ')}"`;
       runFigmaUse(cmd);
+    }
+  });
+
+// ============ SLOT COMMANDS ============
+
+const slot = program
+  .command('slot')
+  .description('Slot operations (create, list, preferred, reset, convert)');
+
+slot
+  .command('create <name>')
+  .description('Create a slot on selected component')
+  .option('-f, --flex <direction>', 'Layout direction: row or col', 'col')
+  .option('-g, --gap <value>', 'Gap between items', '0')
+  .option('-p, --padding <value>', 'Padding')
+  .action(async (name, options) => {
+    await checkConnection();
+
+    const flex = options.flex === 'row' ? 'HORIZONTAL' : 'VERTICAL';
+    const gap = parseInt(options.gap) || 0;
+    const padding = options.padding ? parseInt(options.padding) : 0;
+
+    const code = `(async () => {
+      const selection = figma.currentPage.selection;
+      if (selection.length === 0) return { error: 'No component selected' };
+
+      const comp = selection[0];
+      if (comp.type !== 'COMPONENT' && comp.type !== 'COMPONENT_SET') {
+        return { error: 'Selected node is not a component. Select a component first.' };
+      }
+
+      const slot = comp.createSlot(${JSON.stringify(name)});
+      slot.layoutMode = '${flex}';
+      slot.itemSpacing = ${gap};
+      slot.paddingTop = ${padding};
+      slot.paddingBottom = ${padding};
+      slot.paddingLeft = ${padding};
+      slot.paddingRight = ${padding};
+
+      return {
+        success: true,
+        slotId: slot.id,
+        slotName: slot.name,
+        componentName: comp.name
+      };
+    })()`;
+
+    try {
+      const result = await fastEval(code);
+      if (result.error) {
+        console.log(chalk.red('✗ ' + result.error));
+      } else {
+        console.log(chalk.green(`✓ Created slot "${result.slotName}" in component "${result.componentName}"`));
+        console.log(chalk.gray(`  ID: ${result.slotId}`));
+      }
+    } catch (e) {
+      console.log(chalk.red('✗ Failed: ' + e.message));
+    }
+  });
+
+slot
+  .command('list [nodeId]')
+  .description('List slots in a component')
+  .action(async (nodeId) => {
+    await checkConnection();
+
+    const code = `(async () => {
+      const targetId = ${nodeId ? `"${nodeId}"` : 'null'};
+      let comp;
+
+      if (targetId) {
+        comp = await figma.getNodeByIdAsync(targetId);
+      } else {
+        const selection = figma.currentPage.selection;
+        if (selection.length === 0) return { error: 'No component selected' };
+        comp = selection[0];
+      }
+
+      if (comp.type !== 'COMPONENT' && comp.type !== 'COMPONENT_SET') {
+        return { error: 'Node is not a component' };
+      }
+
+      const propDefs = comp.componentPropertyDefinitions;
+      const slots = [];
+
+      for (const [key, def] of Object.entries(propDefs)) {
+        if (def.type === 'SLOT') {
+          slots.push({
+            key,
+            description: def.description,
+            preferredCount: def.preferredValues ? def.preferredValues.length : 0
+          });
+        }
+      }
+
+      // Also find SLOT nodes in children
+      const slotNodes = [];
+      function findSlots(node) {
+        if (node.type === 'SLOT') {
+          slotNodes.push({ id: node.id, name: node.name });
+        }
+        if ('children' in node) {
+          node.children.forEach(findSlots);
+        }
+      }
+      findSlots(comp);
+
+      return {
+        componentName: comp.name,
+        componentId: comp.id,
+        properties: slots,
+        slotNodes
+      };
+    })()`;
+
+    try {
+      const result = await fastEval(code);
+      if (result.error) {
+        console.log(chalk.red('✗ ' + result.error));
+      } else {
+        console.log(chalk.cyan(`\nSlots in "${result.componentName}" (${result.componentId}):`));
+
+        if (result.properties.length === 0) {
+          console.log(chalk.gray('  No slot properties found'));
+        } else {
+          console.log(chalk.white('\nSlot Properties:'));
+          result.properties.forEach(s => {
+            console.log(`  ${chalk.green(s.key)}`);
+            if (s.description) console.log(chalk.gray(`    Description: ${s.description}`));
+            console.log(chalk.gray(`    Preferred values: ${s.preferredCount}`));
+          });
+        }
+
+        if (result.slotNodes.length > 0) {
+          console.log(chalk.white('\nSlot Nodes:'));
+          result.slotNodes.forEach(s => {
+            console.log(`  ${chalk.yellow(s.name)} (${s.id})`);
+          });
+        }
+      }
+    } catch (e) {
+      console.log(chalk.red('✗ Failed: ' + e.message));
+    }
+  });
+
+slot
+  .command('preferred <slotKey> <componentIds...>')
+  .description('Set preferred components for a slot')
+  .option('-n, --node <nodeId>', 'Component ID to modify (otherwise uses selection)')
+  .action(async (slotKey, componentIds, options) => {
+    await checkConnection();
+
+    const code = `(async () => {
+      const targetId = ${options.node ? `"${options.node}"` : 'null'};
+      let comp;
+
+      if (targetId) {
+        comp = await figma.getNodeByIdAsync(targetId);
+      } else {
+        const selection = figma.currentPage.selection;
+        if (selection.length === 0) return { error: 'No component selected' };
+        comp = selection[0];
+      }
+
+      if (comp.type !== 'COMPONENT' && comp.type !== 'COMPONENT_SET') {
+        return { error: 'Node is not a component' };
+      }
+
+      const propDefs = comp.componentPropertyDefinitions;
+
+      // Find the slot property (might need to match partially)
+      let slotPropKey = null;
+      for (const key of Object.keys(propDefs)) {
+        if (key === ${JSON.stringify(slotKey)} || key.startsWith(${JSON.stringify(slotKey)} + '#')) {
+          slotPropKey = key;
+          break;
+        }
+      }
+
+      if (!slotPropKey) {
+        return { error: 'Slot property not found: ' + ${JSON.stringify(slotKey)} };
+      }
+
+      // Get component keys for preferred values
+      const preferredValues = [];
+      const compIds = ${JSON.stringify(componentIds)};
+
+      for (const id of compIds) {
+        const node = await figma.getNodeByIdAsync(id);
+        if (node && (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET')) {
+          preferredValues.push({ type: 'COMPONENT', key: node.key });
+        }
+      }
+
+      if (preferredValues.length === 0) {
+        return { error: 'No valid components found' };
+      }
+
+      comp.editComponentProperty(slotPropKey, { preferredValues });
+
+      return {
+        success: true,
+        slotKey: slotPropKey,
+        preferredCount: preferredValues.length
+      };
+    })()`;
+
+    try {
+      const result = await fastEval(code);
+      if (result.error) {
+        console.log(chalk.red('✗ ' + result.error));
+      } else {
+        console.log(chalk.green(`✓ Set ${result.preferredCount} preferred component(s) for slot "${result.slotKey}"`));
+      }
+    } catch (e) {
+      console.log(chalk.red('✗ Failed: ' + e.message));
+    }
+  });
+
+slot
+  .command('reset [nodeId]')
+  .description('Reset slot in instance to defaults')
+  .action(async (nodeId) => {
+    await checkConnection();
+
+    const code = `(async () => {
+      const targetId = ${nodeId ? `"${nodeId}"` : 'null'};
+      let node;
+
+      if (targetId) {
+        node = await figma.getNodeByIdAsync(targetId);
+      } else {
+        const selection = figma.currentPage.selection;
+        if (selection.length === 0) return { error: 'No slot selected' };
+        node = selection[0];
+      }
+
+      if (node.type !== 'SLOT') {
+        // Try to find slot in instance
+        if (node.type === 'INSTANCE') {
+          const slots = node.children.filter(c => c.type === 'SLOT');
+          if (slots.length === 0) return { error: 'No slots found in instance' };
+          if (slots.length === 1) {
+            node = slots[0];
+          } else {
+            return { error: 'Multiple slots found. Select a specific slot or provide its ID.' };
+          }
+        } else {
+          return { error: 'Node is not a slot. Select a slot node or instance.' };
+        }
+      }
+
+      const beforeCount = node.children.length;
+      node.resetSlot();
+      const afterCount = node.children.length;
+
+      return {
+        success: true,
+        slotName: node.name,
+        beforeCount,
+        afterCount
+      };
+    })()`;
+
+    try {
+      const result = await fastEval(code);
+      if (result.error) {
+        console.log(chalk.red('✗ ' + result.error));
+      } else {
+        console.log(chalk.green(`✓ Reset slot "${result.slotName}"`));
+        console.log(chalk.gray(`  Children: ${result.beforeCount} → ${result.afterCount}`));
+      }
+    } catch (e) {
+      console.log(chalk.red('✗ Failed: ' + e.message));
+    }
+  });
+
+slot
+  .command('convert [nodeId]')
+  .description('Convert a frame to a slot (must be inside a component)')
+  .option('-n, --name <name>', 'Slot name')
+  .action(async (nodeId, options) => {
+    await checkConnection();
+
+    const slotName = options.name || 'Slot';
+
+    const code = `(async () => {
+      const targetId = ${nodeId ? `"${nodeId}"` : 'null'};
+      let frame;
+
+      if (targetId) {
+        frame = await figma.getNodeByIdAsync(targetId);
+      } else {
+        const selection = figma.currentPage.selection;
+        if (selection.length === 0) return { error: 'No frame selected' };
+        frame = selection[0];
+      }
+
+      if (frame.type !== 'FRAME') {
+        return { error: 'Node is not a frame' };
+      }
+
+      // Find parent component
+      let parent = frame.parent;
+      let component = null;
+      while (parent) {
+        if (parent.type === 'COMPONENT' || parent.type === 'COMPONENT_SET') {
+          component = parent;
+          break;
+        }
+        parent = parent.parent;
+      }
+
+      if (!component) {
+        return { error: 'Frame is not inside a component' };
+      }
+
+      // Store frame properties
+      const frameProps = {
+        x: frame.x,
+        y: frame.y,
+        width: frame.width,
+        height: frame.height,
+        layoutMode: frame.layoutMode,
+        itemSpacing: frame.itemSpacing,
+        paddingTop: frame.paddingTop,
+        paddingBottom: frame.paddingBottom,
+        paddingLeft: frame.paddingLeft,
+        paddingRight: frame.paddingRight,
+        fills: frame.fills,
+        children: [...frame.children]
+      };
+
+      // Create slot
+      const slot = component.createSlot(${JSON.stringify(slotName)});
+
+      // Apply frame properties to slot
+      slot.layoutMode = frameProps.layoutMode;
+      slot.itemSpacing = frameProps.itemSpacing;
+      slot.paddingTop = frameProps.paddingTop;
+      slot.paddingBottom = frameProps.paddingBottom;
+      slot.paddingLeft = frameProps.paddingLeft;
+      slot.paddingRight = frameProps.paddingRight;
+      slot.fills = frameProps.fills;
+      slot.resize(frameProps.width, frameProps.height);
+      slot.x = frameProps.x;
+      slot.y = frameProps.y;
+
+      // Move children to slot
+      frameProps.children.forEach(child => {
+        slot.appendChild(child);
+      });
+
+      // Remove original frame
+      frame.remove();
+
+      return {
+        success: true,
+        slotId: slot.id,
+        slotName: slot.name,
+        componentName: component.name
+      };
+    })()`;
+
+    try {
+      const result = await fastEval(code);
+      if (result.error) {
+        console.log(chalk.red('✗ ' + result.error));
+      } else {
+        console.log(chalk.green(`✓ Converted frame to slot "${result.slotName}" in "${result.componentName}"`));
+        console.log(chalk.gray(`  Slot ID: ${result.slotId}`));
+      }
+    } catch (e) {
+      console.log(chalk.red('✗ Failed: ' + e.message));
+    }
+  });
+
+slot
+  .command('add <nodeId>')
+  .description('Add content to a slot in an instance')
+  .option('-c, --component <componentId>', 'Component to instantiate')
+  .option('-f, --frame', 'Add empty frame')
+  .option('-t, --text <content>', 'Add text')
+  .action(async (nodeId, options) => {
+    await checkConnection();
+
+    let addCode = '';
+    if (options.component) {
+      addCode = `
+        const comp = await figma.getNodeByIdAsync(${JSON.stringify(options.component)});
+        if (comp && comp.type === 'COMPONENT') {
+          const inst = comp.createInstance();
+          slot.appendChild(inst);
+          added = { type: 'instance', name: inst.name };
+        } else {
+          return { error: 'Component not found' };
+        }`;
+    } else if (options.frame) {
+      addCode = `
+        const newFrame = figma.createFrame();
+        newFrame.name = 'Content';
+        newFrame.resize(100, 50);
+        slot.appendChild(newFrame);
+        added = { type: 'frame', name: newFrame.name };`;
+    } else if (options.text) {
+      addCode = `
+        await figma.loadFontAsync({family:'Inter',style:'Regular'});
+        const newText = figma.createText();
+        newText.characters = ${JSON.stringify(options.text)};
+        slot.appendChild(newText);
+        added = { type: 'text', content: ${JSON.stringify(options.text)} };`;
+    } else {
+      console.log(chalk.red('✗ Specify --component, --frame, or --text'));
+      return;
+    }
+
+    const code = `(async () => {
+      const slot = await figma.getNodeByIdAsync(${JSON.stringify(nodeId)});
+      if (!slot) return { error: 'Node not found' };
+      if (slot.type !== 'SLOT') return { error: 'Node is not a slot' };
+
+      let added = null;
+      ${addCode}
+
+      return {
+        success: true,
+        slotName: slot.name,
+        added,
+        childCount: slot.children.length
+      };
+    })()`;
+
+    try {
+      const result = await fastEval(code);
+      if (result.error) {
+        console.log(chalk.red('✗ ' + result.error));
+      } else {
+        console.log(chalk.green(`✓ Added ${result.added.type} to slot "${result.slotName}"`));
+        console.log(chalk.gray(`  Children: ${result.childCount}`));
+      }
+    } catch (e) {
+      console.log(chalk.red('✗ Failed: ' + e.message));
     }
   });
 

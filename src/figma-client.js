@@ -394,7 +394,49 @@ export class FigmaClient {
       frameOpenRegex.lastIndex = match.index + fullLength;
     }
 
-    // Parse Text elements, but skip those inside nested Frames
+    // Parse Slot elements (with children) - must be before Text parsing
+    // Slots can have children (default content)
+    const slotOpenRegex = /<Slot(?:\s+([^>]*?))?>/g;
+    while ((match = slotOpenRegex.exec(childrenStr)) !== null) {
+      const idx = match.index;
+      const insideFrame = frameRanges.some(r => idx >= r.start && idx < r.end);
+      if (!insideFrame) {
+        const slotProps = this.parseProps(match[1] || '');
+        slotProps._type = 'slot';
+        slotProps._index = idx;
+
+        // Get content between opening and matching closing tag
+        const afterOpen = childrenStr.slice(match.index + match[0].length);
+        const innerContent = this.extractContent(afterOpen, 'Slot');
+        const fullLength = match[0].length + innerContent.length + '</Slot>'.length;
+
+        // Recursively parse children of slot (default content)
+        slotProps._children = this.parseChildren(innerContent);
+        children.push(slotProps);
+
+        // Mark this range as consumed (so text/other elements inside are skipped)
+        frameRanges.push({ start: idx, end: idx + fullLength });
+        slotOpenRegex.lastIndex = idx + fullLength;
+      }
+    }
+
+    // Parse self-closing Slot elements
+    const slotSelfCloseRegex = /<Slot(?:\s+([^/]*?))?\s*\/>/g;
+    while ((match = slotSelfCloseRegex.exec(childrenStr)) !== null) {
+      const idx = match.index;
+      const insideFrame = frameRanges.some(r => idx >= r.start && idx < r.end);
+      if (!insideFrame) {
+        const slotProps = this.parseProps(match[1] || '');
+        slotProps._type = 'slot';
+        slotProps._index = idx;
+        slotProps._children = [];
+        children.push(slotProps);
+        // Mark as consumed
+        frameRanges.push({ start: idx, end: idx + match[0].length });
+      }
+    }
+
+    // Parse Text elements, but skip those inside nested Frames/Slots
     // Use (?:\s+([^>]*?))? to allow Text with or without attributes
     const textRegex = /<Text(?:\s+([^>]*?))?>([^<]*)<\/Text>/g;
     while ((match = textRegex.exec(childrenStr)) !== null) {
@@ -694,6 +736,46 @@ export class FigmaClient {
         }`;
           }
           return '';
+        } else if (item._type === 'slot') {
+          // Slot element - creates slot inside component
+          // NOTE: createSlot only works when parent is a component
+          const slotName = item.name || 'Slot';
+          const slotFlex = item.flex || 'col';
+          const slotGap = item.gap || 0;
+          const slotP = item.p !== undefined ? item.p : (item.padding !== undefined ? item.padding : null);
+          const slotPx = item.px !== undefined ? item.px : (slotP !== null ? slotP : 0);
+          const slotPy = item.py !== undefined ? item.py : (slotP !== null ? slotP : 0);
+          const slotBg = item.bg || item.fill || null;
+          const slotWidth = item.w || item.width;
+          const slotHeight = item.h || item.height;
+          const fillWidth = item.w === 'fill';
+          const fillHeight = item.h === 'fill';
+
+          const nestedChildren = item._children ? generateChildCode(item._children, `slot${idx}`) : '';
+          const slotFillCode = slotBg ? this.generateFillCode(slotBg, `slot${idx}`) : { code: '' };
+
+          return `
+        // Create slot (only works if parent is a component)
+        let slot${idx} = null;
+        if (${parentVar}.type === 'COMPONENT' || ${parentVar}.type === 'COMPONENT_SET') {
+          slot${idx} = ${parentVar}.createSlot(${JSON.stringify(slotName)});
+        } else {
+          // Fall back to regular frame if parent is not a component
+          slot${idx} = figma.createFrame();
+          slot${idx}.name = ${JSON.stringify(slotName)};
+          ${parentVar}.appendChild(slot${idx});
+        }
+        slot${idx}.layoutMode = '${slotFlex === 'row' ? 'HORIZONTAL' : 'VERTICAL'}';
+        slot${idx}.itemSpacing = ${slotGap};
+        slot${idx}.paddingTop = ${slotPy};
+        slot${idx}.paddingBottom = ${slotPy};
+        slot${idx}.paddingLeft = ${slotPx};
+        slot${idx}.paddingRight = ${slotPx};
+        ${slotWidth && !fillWidth ? `slot${idx}.resize(${slotWidth}, ${slotHeight || 100});` : ''}
+        ${fillWidth ? `slot${idx}.layoutSizingHorizontal = 'FILL';` : ''}
+        ${fillHeight ? `slot${idx}.layoutSizingVertical = 'FILL';` : ''}
+        ${slotFillCode.code}
+        ${nestedChildren}`;
         }
         return '';
       }).join('\n');
@@ -777,7 +859,20 @@ export class FigmaClient {
   }
 
   hexToRgbCode(hex) {
-    return `{r:${parseInt(hex.slice(1,3),16)/255},g:${parseInt(hex.slice(3,5),16)/255},b:${parseInt(hex.slice(5,7),16)/255}}`;
+    // Support both #fff and #ffffff formats
+    let r, g, b;
+    if (hex.length === 4) {
+      // #rgb -> #rrggbb
+      r = parseInt(hex[1] + hex[1], 16) / 255;
+      g = parseInt(hex[2] + hex[2], 16) / 255;
+      b = parseInt(hex[3] + hex[3], 16) / 255;
+    } else {
+      // #rrggbb
+      r = parseInt(hex.slice(1, 3), 16) / 255;
+      g = parseInt(hex.slice(3, 5), 16) / 255;
+      b = parseInt(hex.slice(5, 7), 16) / 255;
+    }
+    return `{r:${r},g:${g},b:${b}}`;
   }
 
   /**

@@ -164,12 +164,30 @@ node src/index.js node to-component "1:234"    # Convert to component
 node src/index.js node delete "1:234"          # Delete by ID
 ```
 
+## Slots
+
+Figma's native slots feature for flexible content areas in components.
+
+```bash
+node src/index.js slot create "Content"        # Create slot on component
+node src/index.js slot create "Actions" --flex row --gap 8 --padding 16
+node src/index.js slot list                    # List slots in component
+node src/index.js slot list "1:234"            # List by component ID
+node src/index.js slot preferred "Slot#1:2" "comp-id-1" "comp-id-2"  # Set preferred
+node src/index.js slot reset                   # Reset slot to defaults
+node src/index.js slot add "slot-id" --component "comp-id"  # Add to slot
+node src/index.js slot add "slot-id" --frame   # Add empty frame
+node src/index.js slot add "slot-id" --text "Hello"  # Add text
+```
+
 ## Export
 
 ```bash
 node src/index.js export css                   # Variables as CSS
 node src/index.js export tailwind              # Tailwind config
-node src/index.js export screenshot -o out.png # Viewport screenshot
+node src/index.js export screenshot -o out.png # Screenshot (selection or page)
+node src/index.js export screenshot -s 2 -f png # 2x scale PNG
+node src/index.js export screenshot -f svg     # SVG format
 node src/index.js export node "1:234" -o card.png         # Export node by ID
 node src/index.js export node "1:234" -s 2 -f png         # 2x scale PNG
 node src/index.js export node "1:234" -f svg -o card.svg  # SVG export
