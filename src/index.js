@@ -5088,6 +5088,74 @@ return JSON.stringify({ theme: { extend: { colors } } }, null, 2);
     console.log(result);
   });
 
+// ============ VERIFY (AI Screenshot Check) ============
+
+program
+  .command('verify [nodeId]')
+  .description('Take a small screenshot for AI verification (returns base64)')
+  .option('-s, --scale <number>', 'Export scale (default: 0.5 for small size)', '0.5')
+  .option('--max <pixels>', 'Max dimension in pixels (default: 2000)', '2000')
+  .action((nodeId, options) => {
+    checkConnection();
+    const scale = parseFloat(options.scale);
+    const maxDim = parseInt(options.max);
+
+    const code = `(async () => {
+      let node;
+      ${nodeId ? `node = await figma.getNodeByIdAsync('${nodeId}');` : `
+      const sel = figma.currentPage.selection;
+      node = sel.length > 0 ? sel[0] : null;
+      `}
+      if (!node) return { error: 'No node selected or found' };
+      if (!('exportAsync' in node)) return { error: 'Node cannot be exported' };
+
+      // Calculate optimal scale to stay under max dimension
+      const nodeWidth = node.width || 100;
+      const nodeHeight = node.height || 100;
+      let finalScale = ${scale};
+      const maxNodeDim = Math.max(nodeWidth, nodeHeight);
+      if (maxNodeDim * finalScale > ${maxDim}) {
+        finalScale = ${maxDim} / maxNodeDim;
+      }
+      // Ensure we don't exceed 8000px (API limit)
+      if (maxNodeDim * finalScale > 7500) {
+        finalScale = 7500 / maxNodeDim;
+      }
+
+      const bytes = await node.exportAsync({
+        format: 'PNG',
+        constraint: { type: 'SCALE', value: finalScale }
+      });
+
+      // Convert to base64
+      const base64 = figma.base64Encode(bytes);
+
+      return {
+        name: node.name,
+        id: node.id,
+        width: Math.round(nodeWidth * finalScale),
+        height: Math.round(nodeHeight * finalScale),
+        scale: finalScale,
+        base64: base64
+      };
+    })()`;
+
+    const result = figmaEvalSync(code);
+    if (result.error) {
+      console.error(chalk.red('✗'), result.error);
+      process.exit(1);
+    }
+
+    // Output as JSON for easy parsing
+    console.log(JSON.stringify({
+      name: result.name,
+      id: result.id,
+      width: result.width,
+      height: result.height,
+      base64: result.base64
+    }));
+  });
+
 // ============ EVAL ============
 
 program

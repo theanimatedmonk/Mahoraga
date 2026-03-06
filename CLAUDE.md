@@ -22,8 +22,29 @@ CLI that controls Figma Desktop directly. No API key needed.
 | "create a slot" | `node src/index.js slot create "Name"` |
 | "list slots" | `node src/index.js slot list` |
 | "reset slot" | `node src/index.js slot reset` |
+| "verify creation" | `node src/index.js verify` |
 
 **Full command reference:** See REFERENCE.md
+
+---
+
+## AI Verification (Internal)
+
+After creating any component, run `verify` to get a small screenshot for validation:
+
+```bash
+node src/index.js verify              # Screenshot of selection
+node src/index.js verify "123:456"    # Screenshot of specific node
+```
+
+Returns JSON with base64 image (max 2000px, auto-scaled to stay under API limits).
+
+**Always verify after:**
+- `render` or `render-batch`
+- `node to-component`
+- Any visual creation
+
+This is for internal AI checks, not shown to users.
 
 ---
 
