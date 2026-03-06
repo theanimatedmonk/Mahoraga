@@ -285,6 +285,222 @@ export class FigmaClient {
   }
 
   /**
+   * Parse multiple JSX strings into a SINGLE eval call (10x faster)
+   * Returns code that creates all frames and returns array of { id, name }
+   */
+  parseJSXBatch(jsxArray, options = {}) {
+    const gap = options.gap || 40;
+    const vertical = options.vertical || false;
+
+    // Parse each JSX to get props and children
+    const parsed = jsxArray.map(jsx => {
+      const openMatch = jsx.match(/<Frame\s+([^>]*)>/);
+      if (!openMatch) throw new Error('Invalid JSX: must start with <Frame>');
+      const propsStr = openMatch[1];
+      const startIdx = openMatch.index + openMatch[0].length;
+      const children = this.extractContent(jsx.slice(startIdx), 'Frame');
+      const props = this.parseProps(propsStr);
+      const childElements = this.parseChildren(children);
+      return { props, children: childElements };
+    });
+
+    // Collect all fonts needed
+    const allFonts = new Set();
+    let anyUsesVars = false;
+
+    parsed.forEach(({ props, children }) => {
+      const bg = props.bg || props.fill || '#ffffff';
+      const stroke = props.stroke || null;
+      if (this.isVarRef(bg)) anyUsesVars = true;
+      if (stroke && this.isVarRef(stroke)) anyUsesVars = true;
+
+      const collectFonts = (items) => {
+        items.forEach(item => {
+          if (item._type === 'text') {
+            const weight = item.weight || 'regular';
+            const style = weight === 'bold' ? 'Bold' : weight === 'medium' ? 'Medium' : weight === 'semibold' ? 'Semi Bold' : 'Regular';
+            allFonts.add(style);
+            if (item.color && this.isVarRef(item.color)) anyUsesVars = true;
+          } else if (item._type === 'frame') {
+            if (item.bg && this.isVarRef(item.bg)) anyUsesVars = true;
+            if (item.stroke && this.isVarRef(item.stroke)) anyUsesVars = true;
+            if (item._children) collectFonts(item._children);
+          }
+        });
+      };
+      collectFonts(children);
+    });
+
+    const fontLoads = Array.from(allFonts)
+      .map(s => `figma.loadFontAsync({family:'Inter',style:'${s}'})`)
+      .join(',') || 'figma.loadFontAsync({family:"Inter",style:"Regular"})';
+
+    const varLoadCode = anyUsesVars ? `
+      const collections = await figma.variables.getLocalVariableCollectionsAsync();
+      const shadcnCol = collections.find(c => c.name === 'shadcn');
+      const vars = {};
+      if (shadcnCol) {
+        for (const id of shadcnCol.variableIds) {
+          const v = await figma.variables.getVariableByIdAsync(id);
+          if (v) vars[v.name] = v;
+        }
+      }
+      const boundFill = (variable) => figma.variables.setBoundVariableForPaint(
+        { type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5 } }, 'color', variable
+      );
+    ` : '';
+
+    // Generate code for each frame
+    const framesCodes = parsed.map(({ props, children }, frameIdx) => {
+      const name = props.name || 'Frame';
+      const width = props.w || props.width || 320;
+      const height = props.h || props.height || 200;
+      const bg = props.bg || props.fill || '#ffffff';
+      const stroke = props.stroke || null;
+      const rounded = props.rounded || props.radius || 0;
+      const flex = props.flex || 'col';
+      const itemGap = props.gap || 0;
+      const p = props.p || props.padding || 0;
+      const px = props.px || p;
+      const py = props.py || p;
+      const align = props.align || 'MIN';
+      const justify = props.justify || 'MIN';
+      const wrap = props.wrap === true || props.wrap === 'true';
+      const wrapGap = Number(props.wrapGap || props.counterAxisSpacing || 0);
+      const hug = props.hug || '';
+      const hugWidth = hug === 'both' || hug === 'w' || hug === 'width';
+      const hugHeight = hug === 'both' || hug === 'h' || hug === 'height';
+      const clip = props.clip === 'true' || props.clip === true;
+
+      const alignMap = { start: 'MIN', center: 'CENTER', end: 'MAX', stretch: 'STRETCH' };
+      const alignVal = alignMap[align] || 'MIN';
+      const justifyVal = alignMap[justify] || 'MIN';
+
+      const fillCode = this.generateFillCode(bg, `f${frameIdx}`);
+      const strokeCode = stroke ? this.generateStrokeCode(stroke, `f${frameIdx}`) : { code: '' };
+
+      // Generate child code
+      let childCounter = 0;
+      const generateChildCode = (items, parentVar) => {
+        return items.map(item => {
+          const idx = `${frameIdx}_${childCounter++}`;
+          if (item._type === 'text') {
+            const weight = item.weight || 'regular';
+            const style = weight === 'bold' ? 'Bold' : weight === 'medium' ? 'Medium' : weight === 'semibold' ? 'Semi Bold' : 'Regular';
+            const size = item.size || 14;
+            const color = item.color || '#000000';
+            const fillWidth = item.w === 'fill';
+            const textAlign = item.align || 'left';
+            const textAlignVal = textAlign === 'center' ? 'CENTER' : textAlign === 'right' ? 'RIGHT' : 'LEFT';
+            const textFillCode = this.generateFillCode(color, `el${idx}`);
+            return `
+          const el${idx} = figma.createText();
+          el${idx}.fontName = {family:'Inter',style:'${style}'};
+          el${idx}.characters = ${JSON.stringify(item._content || '')};
+          el${idx}.fontSize = ${size};
+          ${textFillCode.code}
+          el${idx}.textAlignHorizontal = '${textAlignVal}';
+          ${parentVar}.appendChild(el${idx});
+          ${fillWidth ? `el${idx}.layoutSizingHorizontal = 'FILL';` : ''}`;
+          } else if (item._type === 'frame') {
+            const fName = item.name || 'Frame';
+            const fWidth = item.w || item.width || 100;
+            const fHeight = item.h || item.height || 100;
+            const fBg = item.bg || item.fill || '#ffffff';
+            const fStroke = item.stroke || null;
+            const fRounded = item.rounded || item.radius || 0;
+            const fFlex = item.flex || null;
+            const fGap = item.gap || 0;
+            const fP = item.p !== undefined ? item.p : 0;
+            const fPx = item.px !== undefined ? item.px : fP;
+            const fPy = item.py !== undefined ? item.py : fP;
+            const fillW = item.w === 'fill';
+            const fillH = item.h === 'fill';
+            const fGrow = item.grow || 0;
+            const fJustify = item.justify || 'start';
+            const fItems = item.items || 'start';
+            const justifyMap = { start: 'MIN', center: 'CENTER', end: 'MAX', between: 'SPACE_BETWEEN' };
+            const fJustifyVal = justifyMap[fJustify] || 'MIN';
+            const fItemsVal = alignMap[fItems] || 'MIN';
+            const fFillCode = this.generateFillCode(fBg, `el${idx}`);
+            const fStrokeCode = fStroke ? this.generateStrokeCode(fStroke, `el${idx}`) : { code: '' };
+            const nestedChildren = item._children ? generateChildCode(item._children, `el${idx}`) : '';
+            return `
+          const el${idx} = figma.createFrame();
+          el${idx}.name = ${JSON.stringify(fName)};
+          ${!fillW ? `el${idx}.resize(${fWidth}, ${fHeight});` : ''}
+          el${idx}.cornerRadius = ${fRounded};
+          ${fFillCode.code}
+          ${fStrokeCode.code}
+          ${fFlex ? `el${idx}.layoutMode = '${fFlex === 'row' ? 'HORIZONTAL' : 'VERTICAL'}';` : ''}
+          ${fFlex ? `el${idx}.itemSpacing = ${fGap};` : ''}
+          ${fFlex ? `el${idx}.paddingTop = el${idx}.paddingBottom = ${fPy};` : ''}
+          ${fFlex ? `el${idx}.paddingLeft = el${idx}.paddingRight = ${fPx};` : ''}
+          ${fFlex ? `el${idx}.primaryAxisAlignItems = '${fJustifyVal}';` : ''}
+          ${fFlex ? `el${idx}.counterAxisAlignItems = '${fItemsVal}';` : ''}
+          ${parentVar}.appendChild(el${idx});
+          ${fillW ? `el${idx}.layoutSizingHorizontal = 'FILL';` : ''}
+          ${fillH ? `el${idx}.layoutSizingVertical = 'FILL';` : ''}
+          ${fGrow ? `el${idx}.layoutGrow = ${fGrow};` : ''}
+          ${nestedChildren}`;
+          }
+          return '';
+        }).join('\n');
+      };
+
+      const childCode = generateChildCode(children, `f${frameIdx}`);
+
+      return `
+        const f${frameIdx} = figma.createFrame();
+        f${frameIdx}.name = ${JSON.stringify(name)};
+        f${frameIdx}.resize(${width}, ${height});
+        f${frameIdx}.x = posX;
+        f${frameIdx}.y = posY;
+        f${frameIdx}.cornerRadius = ${rounded};
+        ${fillCode.code}
+        ${strokeCode.code}
+        f${frameIdx}.layoutMode = '${flex === 'row' ? 'HORIZONTAL' : 'VERTICAL'}';
+        ${wrap && flex === 'row' ? `f${frameIdx}.layoutWrap = 'WRAP';` : ''}
+        f${frameIdx}.itemSpacing = ${itemGap};
+        f${frameIdx}.paddingTop = f${frameIdx}.paddingBottom = ${py};
+        f${frameIdx}.paddingLeft = f${frameIdx}.paddingRight = ${px};
+        f${frameIdx}.primaryAxisAlignItems = '${justifyVal}';
+        f${frameIdx}.counterAxisAlignItems = '${alignVal}';
+        f${frameIdx}.primaryAxisSizingMode = '${hugWidth ? 'AUTO' : 'FIXED'}';
+        f${frameIdx}.counterAxisSizingMode = '${hugHeight ? 'AUTO' : 'FIXED'}';
+        ${wrap && flex === 'row' && wrapGap > 0 ? `f${frameIdx}.counterAxisSpacing = ${wrapGap};` : ''}
+        f${frameIdx}.clipsContent = ${clip};
+        ${childCode}
+        results.push({ id: f${frameIdx}.id, name: f${frameIdx}.name, width: f${frameIdx}.width, height: f${frameIdx}.height });
+        ${vertical ? `posY += f${frameIdx}.height + ${gap};` : `posX += f${frameIdx}.width + ${gap};`}
+      `;
+    }).join('\n');
+
+    return `
+      (async function() {
+        await Promise.all([${fontLoads}]);
+        ${varLoadCode}
+
+        // Calculate start position
+        let posX = 0, posY = 100;
+        const children = figma.currentPage.children;
+        if (children.length > 0) {
+          let maxRight = 0;
+          children.forEach(n => {
+            const right = n.x + (n.width || 0);
+            if (right > maxRight) maxRight = right;
+          });
+          posX = Math.round(maxRight + 100);
+        }
+
+        const results = [];
+        ${framesCodes}
+        return results;
+      })()
+    `;
+  }
+
+  /**
    * Parse JSX-like syntax to Figma Plugin API code
    */
   parseJSX(jsx) {
