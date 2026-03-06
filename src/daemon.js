@@ -174,8 +174,8 @@ async function evalViaPlugin(code) {
     const id = ++pluginMsgId;
     const timeout = setTimeout(() => {
       pluginPendingRequests.delete(id);
-      reject(new Error('Plugin execution timeout (90s)'));
-    }, 90000); // 90s timeout
+      reject(new Error('Plugin execution timeout (30s)'));
+    }, 30000); // 30s timeout (reduced from 90s)
 
     pluginPendingRequests.set(id, { resolve, reject, timeout });
 
@@ -183,6 +183,29 @@ async function evalViaPlugin(code) {
       action: 'eval',
       id: id,
       code: code
+    }));
+  });
+}
+
+// Batch eval via plugin (execute multiple codes, return all results)
+async function evalBatchViaPlugin(codes) {
+  if (!isPluginConnected()) {
+    throw new Error('Plugin not connected. Start the Figma CLI Bridge plugin in Figma.');
+  }
+
+  return new Promise((resolve, reject) => {
+    const id = ++pluginMsgId;
+    const timeout = setTimeout(() => {
+      pluginPendingRequests.delete(id);
+      reject(new Error('Plugin batch execution timeout (60s)'));
+    }, 60000); // 60s for batches
+
+    pluginPendingRequests.set(id, { resolve, reject, timeout, isBatch: true });
+
+    pluginWs.send(JSON.stringify({
+      action: 'eval-batch',
+      id: id,
+      codes: codes
     }));
   });
 }
@@ -312,14 +335,14 @@ async function handleRequest(req, res) {
 
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
-          const { action, code, jsx, jsxArray } = JSON.parse(body);
+          const { action, code, jsx, jsxArray, gap, vertical } = JSON.parse(body);
           let result;
 
-          const execWithTimeout = async (fn) => {
+          const execWithTimeout = async (fn, timeoutMs = 30000) => {
             return Promise.race([
               fn(),
               new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Execution timeout (90s)')), 90000)
+                setTimeout(() => reject(new Error(`Execution timeout (${timeoutMs/1000}s)`)), timeoutMs)
               )
             ]);
           };
@@ -338,10 +361,10 @@ async function handleRequest(req, res) {
               // Single eval for ALL frames (10x faster than loop)
               const batchParser = new FigmaClient();
               const batchCode = batchParser.parseJSXBatch(jsxArray, {
-                gap: body.gap || 40,
-                vertical: body.vertical || false
+                gap: gap || 40,
+                vertical: vertical || false
               });
-              result = await execWithTimeout(() => executeEval(batchCode));
+              result = await execWithTimeout(() => executeEval(batchCode), 60000); // 60s for batches
               break;
             default:
               throw new Error(`Unknown action: ${action}`);
@@ -407,6 +430,21 @@ wss.on('connection', (ws) => {
             pending.resolve(msg.result);
           }
         }
+      }
+
+      // Batch result from plugin
+      if (msg.type === 'batch-result') {
+        const pending = pluginPendingRequests.get(msg.id);
+        if (pending) {
+          clearTimeout(pending.timeout);
+          pluginPendingRequests.delete(msg.id);
+          pending.resolve(msg.results);
+        }
+      }
+
+      // Keepalive ping from plugin
+      if (msg.type === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong' }));
       }
 
       if (msg.type === 'pong') {

@@ -46,11 +46,11 @@
   <div class="hint">Keep this window open</div>
 
   <script>
-    // Scan ports 3456-3460 (like figma-console-mcp scans 9223-9232)
+    // Scan ports 3456-3460 in PARALLEL for fast connection
     const PORTS = [3456, 3457, 3458, 3459, 3460];
-    let currentPortIndex = 0;
     let ws = null;
     let reconnectTimer = null;
+    let keepaliveTimer = null;
     const statusEl = document.getElementById('status');
     const dotEl = document.getElementById('dot');
 
@@ -59,83 +59,110 @@
       dotEl.className = 'dot ' + state;
     }
 
-    function connect() {
+    // Try all ports in parallel, use first successful connection
+    function connectParallel() {
       if (ws && ws.readyState === WebSocket.OPEN) return;
 
-      const port = PORTS[currentPortIndex];
-      const url = `ws://127.0.0.1:${port}/plugin`;
+      setStatus('Scanning...', 'connecting');
+      let connected = false;
+      const attempts = [];
 
+      PORTS.forEach(port => {
+        const url = `ws://127.0.0.1:${port}/plugin`;
+        try {
+          const socket = new WebSocket(url);
+          attempts.push(socket);
+
+          socket.onopen = () => {
+            if (connected) {
+              socket.close();
+              return;
+            }
+            connected = true;
+            ws = socket;
+
+            // Close other attempts
+            attempts.forEach(s => { if (s !== socket && s.readyState === WebSocket.CONNECTING) s.close(); });
+
+            setStatus('Connected', 'connected');
+            parent.postMessage({ pluginMessage: { type: 'connected' } }, '*');
+
+            // Send hello
+            ws.send(JSON.stringify({ type: 'hello', mode: 'plugin', version: '1.1.0' }));
+
+            // Start keepalive (ping every 10s)
+            startKeepalive();
+          };
+
+          socket.onmessage = handleMessage;
+          socket.onclose = handleClose;
+          socket.onerror = () => {}; // Ignore errors during parallel scan
+        } catch (e) {}
+      });
+
+      // If no connection after 3s, retry
+      setTimeout(() => {
+        if (!connected) {
+          attempts.forEach(s => { try { s.close(); } catch {} });
+          clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(connectParallel, 500);
+        }
+      }, 3000);
+    }
+
+    function handleMessage(event) {
       try {
-        ws = new WebSocket(url);
+        const msg = JSON.parse(event.data);
 
-        ws.onopen = () => {
-          setStatus('Connected', 'connected');
-          currentPortIndex = 0;
+        if (msg.action === 'eval') {
+          parent.postMessage({
+            pluginMessage: { type: 'eval', id: msg.id, code: msg.code }
+          }, '*');
+        }
 
-          // Notify plugin main thread
-          parent.postMessage({ pluginMessage: { type: 'connected' } }, '*');
+        // Batch eval support
+        if (msg.action === 'eval-batch') {
+          parent.postMessage({
+            pluginMessage: { type: 'eval-batch', id: msg.id, codes: msg.codes }
+          }, '*');
+        }
 
-          // Send hello
-          ws.send(JSON.stringify({
-            type: 'hello',
-            mode: 'plugin',
-            version: '1.0.0'
-          }));
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-
-            if (msg.action === 'eval') {
-              // Forward eval request to plugin main thread
-              parent.postMessage({
-                pluginMessage: {
-                  type: 'eval',
-                  id: msg.id,
-                  code: msg.code
-                }
-              }, '*');
-            }
-
-            if (msg.action === 'ping') {
-              ws.send(JSON.stringify({ type: 'pong', id: msg.id }));
-            }
-          } catch (e) {
-            console.error('Message parse error:', e);
-          }
-        };
-
-        ws.onclose = () => {
-          setStatus('Reconnecting...', 'connecting');
-          parent.postMessage({ pluginMessage: { type: 'disconnected' } }, '*');
-
-          // Reconnect after 2 seconds (start from first port)
-          currentPortIndex = 0;
-          clearTimeout(reconnectTimer);
-          reconnectTimer = setTimeout(connect, 2000);
-        };
-
-        ws.onerror = (error) => {
-          setStatus('Scanning...', 'connecting');
-          console.error('WebSocket error:', error);
-
-          // Try next port
-          currentPortIndex = (currentPortIndex + 1) % PORTS.length;
-          clearTimeout(reconnectTimer);
-          reconnectTimer = setTimeout(connect, 500);
-        };
-
+        if (msg.action === 'ping') {
+          ws.send(JSON.stringify({ type: 'pong', id: msg.id }));
+        }
       } catch (e) {
-        setStatus('Error', 'error');
-        parent.postMessage({ pluginMessage: { type: 'error', message: e.message } }, '*');
-
-        // Try next port
-        currentPortIndex = (currentPortIndex + 1) % PORTS.length;
-        clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(connect, 500);
+        console.error('Message parse error:', e);
       }
     }
+
+    function handleClose() {
+      setStatus('Reconnecting...', 'connecting');
+      stopKeepalive();
+      parent.postMessage({ pluginMessage: { type: 'disconnected' } }, '*');
+
+      // Fast reconnect (500ms instead of 2s)
+      clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(connectParallel, 500);
+    }
+
+    function startKeepalive() {
+      stopKeepalive();
+      keepaliveTimer = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 10000);
+    }
+
+    function stopKeepalive() {
+      if (keepaliveTimer) {
+        clearInterval(keepaliveTimer);
+        keepaliveTimer = null;
+      }
+    }
+
+    // Legacy function name for compatibility
+    function connect() { connectParallel(); }
 
     // Receive results from plugin main thread
     window.onmessage = (event) => {
