@@ -356,6 +356,12 @@ node src/index.js slot create "Content" --flex col --gap 8
 node src/index.js slot preferred "Slot#1:2" "button-comp-id" "icon-comp-id"
 ```
 
+**CRITICAL: `isSlot = true` does NOT work in eval!**
+Setting `frame.isSlot = true` directly in Figma API code will NOT create a slot. You MUST use:
+```bash
+node src/index.js slot convert "frame-id" --name "SlotName"
+```
+
 4. **In instances, slots allow:**
 - Adding any content (or only preferred if set)
 - Reordering children
