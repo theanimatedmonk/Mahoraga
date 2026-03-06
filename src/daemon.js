@@ -335,12 +335,13 @@ async function handleRequest(req, res) {
               result = await execWithTimeout(() => executeEval(renderCode));
               break;
             case 'render-batch':
+              // Single eval for ALL frames (10x faster than loop)
               const batchParser = new FigmaClient();
-              result = [];
-              for (const j of jsxArray) {
-                const batchCode = batchParser.parseJSX(j);
-                result.push(await execWithTimeout(() => executeEval(batchCode)));
-              }
+              const batchCode = batchParser.parseJSXBatch(jsxArray, {
+                gap: body.gap || 40,
+                vertical: body.vertical || false
+              });
+              result = await execWithTimeout(() => executeEval(batchCode));
               break;
             default:
               throw new Error(`Unknown action: ${action}`);

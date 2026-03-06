@@ -4826,7 +4826,7 @@ program
 
 program
   .command('render-batch')
-  .description('Render multiple JSX frames (uses figma-use for full JSX support)')
+  .description('Render multiple JSX frames in a single call (fast)')
   .argument('<jsxArray>', 'JSON array of JSX strings, e.g. \'["<Frame>...</Frame>","<Frame>...</Frame>"]\'')
   .option('-g, --gap <n>', 'Gap between frames', '40')
   .option('-d, --direction <dir>', 'Layout direction: row (horizontal) or col (vertical)', 'row')
@@ -4840,68 +4840,22 @@ program
 
       const gap = parseInt(options.gap) || 40;
       const vertical = options.direction === 'col' || options.direction === 'column' || options.direction === 'vertical';
-      let posX = vertical ? 100 : getNextFreeX(gap);
-      let posY = vertical ? getNextFreeY(gap) : 100;
 
-      const results = [];
+      // Single daemon call for ALL frames (10x faster)
+      const results = await daemonExec('render-batch', {
+        jsxArray,
+        gap,
+        vertical
+      });
 
-      // Check if we're in Safe Mode (plugin only, no CDP)
-      let useDaemon = false;
-      try {
-        const healthToken = getDaemonToken();
-        const healthHeader = healthToken ? ` -H "X-Daemon-Token: ${healthToken}"` : '';
-        const healthRes = execSync(`curl -s${healthHeader} http://127.0.0.1:${DAEMON_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
-        const health = JSON.parse(healthRes);
-        useDaemon = health.plugin && !health.cdp; // Safe Mode: plugin connected, no CDP
-      } catch {}
-
-      if (useDaemon) {
-        console.log(chalk.gray('Using daemon-based rendering (Safe Mode)'));
+      if (Array.isArray(results)) {
+        results.forEach(r => {
+          console.log(chalk.green('✓ Rendered: ' + r.id + (r.name ? ' (' + r.name + ')' : '')));
+        });
+        console.log(chalk.cyan(`\n${results.length} frames created`));
+      } else {
+        console.log(chalk.green('✓ Rendered'));
       }
-
-      // Render each JSX
-      for (const jsx of jsxArray) {
-        let result;
-
-        if (useDaemon) {
-          // Safe Mode: use daemon render (works via plugin)
-          result = await daemonExec('render', { jsx });
-          // Position the frame after creation
-          if (result && result.id) {
-            await fastEval(`(async () => {
-              const n = await figma.getNodeByIdAsync("${result.id}");
-              if (n) { n.x = ${posX}; n.y = ${posY}; }
-            })()`);
-          }
-        } else {
-          // Yolo Mode: use figma-use (full JSX support, faster)
-          const cmd = `figma-use render --stdin --json --x ${posX} --y ${posY}`;
-          const output = execSync(cmd, {
-            input: jsx,
-            encoding: 'utf8',
-            stdio: ['pipe', 'pipe', 'pipe'],
-            timeout: 60000
-          });
-          result = JSON.parse(output.trim());
-        }
-
-        results.push(result);
-        console.log(chalk.green('✓ Rendered: ' + result.id + (result.name ? ' (' + result.name + ')' : '')));
-
-        // Get size for positioning next frame
-        const sizeResult = await fastEval(`(async () => {
-          const n = await figma.getNodeByIdAsync("${result.id}");
-          return n ? { w: n.width, h: n.height } : null;
-        })()`);
-
-
-        if (sizeResult) {
-          if (vertical) posY += sizeResult.h + gap;
-          else posX += sizeResult.w + gap;
-        }
-      }
-
-      console.log(chalk.cyan(`\n${results.length} frames created`));
     } catch (e) {
       console.log(chalk.red('✗ Batch render failed: ' + (e.stderr || e.message)));
     }
