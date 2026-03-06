@@ -214,7 +214,7 @@ function isPluginConnected() {
   return pluginWs && pluginWs.readyState === WebSocket.OPEN;
 }
 
-async function evalViaPlugin(code) {
+async function evalViaPlugin(code, retryCount = 0) {
   if (!isPluginConnected()) {
     throw new Error('Plugin not connected. Start the Figma CLI Bridge plugin in Figma.');
   }
@@ -223,16 +223,22 @@ async function evalViaPlugin(code) {
     const id = ++pluginMsgId;
     const timeout = setTimeout(() => {
       pluginPendingRequests.delete(id);
-      reject(new Error('Plugin execution timeout (30s)'));
-    }, 30000); // 30s timeout (reduced from 90s)
+      reject(new Error('Plugin execution timeout (25s)'));
+    }, 25000); // 25s timeout to match plugin-side timeout
 
-    pluginPendingRequests.set(id, { resolve, reject, timeout });
+    pluginPendingRequests.set(id, { resolve, reject, timeout, code, retryCount });
 
-    pluginWs.send(JSON.stringify({
-      action: 'eval',
-      id: id,
-      code: code
-    }));
+    try {
+      pluginWs.send(JSON.stringify({
+        action: 'eval',
+        id: id,
+        code: code
+      }));
+    } catch (sendError) {
+      clearTimeout(timeout);
+      pluginPendingRequests.delete(id);
+      reject(new Error(`Plugin send error: ${sendError.message}`));
+    }
   });
 }
 
@@ -251,11 +257,17 @@ async function evalBatchViaPlugin(codes) {
 
     pluginPendingRequests.set(id, { resolve, reject, timeout, isBatch: true });
 
-    pluginWs.send(JSON.stringify({
-      action: 'eval-batch',
-      id: id,
-      codes: codes
-    }));
+    try {
+      pluginWs.send(JSON.stringify({
+        action: 'eval-batch',
+        id: id,
+        codes: codes
+      }));
+    } catch (sendError) {
+      clearTimeout(timeout);
+      pluginPendingRequests.delete(id);
+      reject(new Error(`Plugin batch send error: ${sendError.message}`));
+    }
   });
 }
 
@@ -430,9 +442,22 @@ async function handleRequest(req, res) {
           lastError = error;
           console.log(`[daemon] Attempt ${attempt + 1} failed: ${error.message}`);
 
-          // Force reconnect before retry (CDP only)
-          if (attempt < MAX_RETRIES && !isPluginConnected()) {
-            console.log('[daemon] Reconnecting before retry...');
+          // For Safe Mode: wait briefly for potential reconnect
+          if (attempt < MAX_RETRIES && MODE === 'plugin') {
+            console.log('[daemon] Safe Mode: waiting for plugin reconnect...');
+            // Wait up to 2s for plugin to reconnect
+            for (let i = 0; i < 10; i++) {
+              await new Promise(r => setTimeout(r, 200));
+              if (isPluginConnected()) {
+                console.log('[daemon] Plugin reconnected, retrying...');
+                break;
+              }
+            }
+          }
+
+          // For Yolo Mode: force reconnect
+          if (attempt < MAX_RETRIES && MODE !== 'plugin' && !isPluginConnected()) {
+            console.log('[daemon] Reconnecting CDP before retry...');
             try { cdpClient.close(); } catch {}
             cdpClient = null;
             await new Promise(r => setTimeout(r, 200));

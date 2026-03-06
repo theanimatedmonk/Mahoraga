@@ -12,8 +12,8 @@ figma.showUI(__html__, {
   position: { x: -9999, y: 9999 }  // Bottom-left (push to far left)
 });
 
-// Execute code with auto-return
-async function executeCode(code) {
+// Execute code with auto-return and timeout protection
+async function executeCode(code, timeoutMs = 25000) {
   let trimmed = code.trim();
 
   // Don't add return if code already starts with return
@@ -38,7 +38,14 @@ async function executeCode(code) {
 
   const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
   const fn = new AsyncFunction('figma', `return (async () => { ${trimmed} })()`);
-  return await fn(figma);
+
+  // Execute with timeout protection
+  const execPromise = fn(figma);
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`Execution timeout (${timeoutMs/1000}s)`)), timeoutMs)
+  );
+
+  return Promise.race([execPromise, timeoutPromise]);
 }
 
 // Handle messages from UI (WebSocket bridge)
