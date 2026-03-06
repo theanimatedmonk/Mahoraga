@@ -28,6 +28,7 @@ A CLI that connects directly to Figma Desktop and gives you complete control:
 
 - **Design Tokens** — Create variables, collections, modes (Light/Dark), bind to nodes
 - **Create Anything** — Frames, text, shapes, icons (150k+ from Iconify), components
+- **Slots** — Create and manage Figma's new Slots feature for flexible component content
 - **Team Libraries** — Import and use components, styles, variables from any library
 - **Analyze Designs** — Colors, typography, spacing, find repeated patterns
 - **Lint & Accessibility** — Contrast checker, touch targets, design rules

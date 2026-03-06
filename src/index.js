@@ -13,7 +13,7 @@ import { homedir, platform } from 'os';
 import { createServer } from 'http';
 import { FigJamClient } from './figjam-client.js';
 import { FigmaClient } from './figma-client.js';
-import { isPatched, patchFigma, unpatchFigma, getFigmaCommand, getCdpPort } from './figma-patch.js';
+import { isPatched, patchFigma, unpatchFigma, getFigmaCommand, getCdpPort, getFigmaBinaryPath } from './figma-patch.js';
 
 // Daemon configuration
 const DAEMON_PORT = 3456;
@@ -184,6 +184,19 @@ function stopDaemon() {
     // Also try to kill by port
     if (IS_MAC || IS_LINUX) {
       execSync(`lsof -ti:${DAEMON_PORT} | xargs kill -9 2>/dev/null || true`, { stdio: 'pipe' });
+    } else if (IS_WINDOWS) {
+      // Windows: find process using port and kill it
+      try {
+        const result = execSync(`netstat -ano | findstr :${DAEMON_PORT}`, { encoding: 'utf8', stdio: 'pipe' });
+        const lines = result.split('\n').filter(l => l.includes('LISTENING'));
+        for (const line of lines) {
+          const parts = line.trim().split(/\s+/);
+          const pid = parts[parts.length - 1];
+          if (pid && /^\d+$/.test(pid)) {
+            execSync(`taskkill /PID ${pid} /F 2>nul`, { stdio: 'pipe' });
+          }
+        }
+      } catch {}
     }
   } catch {}
 }
@@ -195,15 +208,8 @@ const IS_LINUX = platform() === 'linux';
 
 // Platform-specific Figma paths and commands
 function getFigmaPath() {
-  if (IS_MAC) {
-    return '/Applications/Figma.app/Contents/MacOS/Figma';
-  } else if (IS_WINDOWS) {
-    const localAppData = process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local');
-    return join(localAppData, 'Figma', 'Figma.exe');
-  } else {
-    // Linux
-    return '/usr/bin/figma';
-  }
+  // Use centralized path detection from figma-patch.js
+  return getFigmaBinaryPath();
 }
 
 function startFigma() {
@@ -233,14 +239,8 @@ function killFigma() {
 }
 
 function getManualStartCommand() {
-  const port = getCdpPort();
-  if (IS_MAC) {
-    return `open -a Figma --args --remote-debugging-port=${port}`;
-  } else if (IS_WINDOWS) {
-    return `"%LOCALAPPDATA%\\Figma\\Figma.exe" --remote-debugging-port=${port}`;
-  } else {
-    return `figma --remote-debugging-port=${port}`;
-  }
+  // Use centralized command from figma-patch.js
+  return getFigmaCommand(getCdpPort());
 }
 
 const __filename = fileURLToPath(import.meta.url);
