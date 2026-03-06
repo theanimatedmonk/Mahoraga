@@ -186,14 +186,19 @@ node src/index.js eval "(async () => {
 3. ALL text nodes need `layoutSizingHorizontal = 'FILL'` AFTER appendChild
 4. Order matters: appendChild first, then set layoutSizingHorizontal
 
-**Before Creating - Always Clean Up:**
+**Before Creating - Check Positions:**
 ```javascript
-// Check what's on page
-const nodes = figma.currentPage.children.map(n => ({ name: n.name, x: n.x }));
-
-// Delete old nodes to prevent overlap
-for (const child of [...figma.currentPage.children]) child.remove();
+// Check what's on page to avoid overlap
+const nodes = figma.currentPage.children.map(n => ({
+  name: n.name,
+  x: n.x,
+  width: n.width
+}));
+// Find rightmost edge, place new components after it
+const maxX = Math.max(0, ...nodes.map(n => n.x + n.width)) + 100;
 ```
+
+**NEVER delete existing nodes** - users may have components they want to keep!
 
 **After Creating - Always Verify:**
 ```bash
