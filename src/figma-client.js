@@ -579,7 +579,7 @@ export class FigmaClient {
         i += closeTag.length;
       } else if (remaining.startsWith(`<${tagName} `) || remaining.startsWith(`<${tagName}>`)) {
         // Check if this is a self-closing tag (e.g. <Frame ... />)
-        const selfCloseCheck = remaining.match(new RegExp(`^<${tagName}(?:\\s+[^>]*)?\\s*\\/>`));
+        const selfCloseCheck = remaining.match(new RegExp(`^<${tagName}(?:\\s[^>]*?)?\\s*\\/>`));
         if (selfCloseCheck) {
           // Self-closing: skip entirely, don't change depth
           i += selfCloseCheck[0].length;
@@ -615,26 +615,13 @@ export class FigmaClient {
     const children = [];
     const frameRanges = [];
 
-    // First: parse self-closing Frame elements (e.g. <Frame w="fill" h={1} />)
-    const frameSelfCloseRegex = /<Frame(?:\s+([^>]*?))?\s*\/>/g;
+    // First: find all open/close Frame elements (recursive, handles nesting)
+    const frameOpenRegex = /<Frame(?:\s+([^>]*?))?>/g;
     let match;
 
-    while ((match = frameSelfCloseRegex.exec(childrenStr)) !== null) {
-      const frameProps = this.parseProps(match[1] || '');
-      frameProps._type = 'frame';
-      frameProps._index = match.index;
-      frameProps._children = [];
-      children.push(frameProps);
-      frameRanges.push({ start: match.index, end: match.index + match[0].length });
-    }
-
-    // Then: find all nested Frame elements with open/close tags
-    const frameOpenRegex = /<Frame(?:\s+([^>]*?))?>/g;
-
     while ((match = frameOpenRegex.exec(childrenStr)) !== null) {
-      // Skip if this range was already consumed by a self-closing frame
-      const alreadyConsumed = frameRanges.some(r => match.index >= r.start && match.index < r.end);
-      if (alreadyConsumed) continue;
+      // Skip self-closing frames (regex matches /> because > is part of />)
+      if (match[0].endsWith('/>')) continue;
 
       const frameProps = this.parseProps(match[1] || '');
       frameProps._type = 'frame';
@@ -656,6 +643,22 @@ export class FigmaClient {
 
       // Move regex past this frame to avoid re-matching nested frames
       frameOpenRegex.lastIndex = match.index + fullLength;
+    }
+
+    // Then: parse self-closing Frame elements NOT inside open/close frames
+    const frameSelfCloseRegex = /<Frame(?:\s+([^>]*?))?\s*\/>/g;
+
+    while ((match = frameSelfCloseRegex.exec(childrenStr)) !== null) {
+      // Skip if inside an already-consumed open/close frame
+      const insideFrame = frameRanges.some(r => match.index >= r.start && match.index < r.end);
+      if (insideFrame) continue;
+
+      const frameProps = this.parseProps(match[1] || '');
+      frameProps._type = 'frame';
+      frameProps._index = match.index;
+      frameProps._children = [];
+      children.push(frameProps);
+      frameRanges.push({ start: match.index, end: match.index + match[0].length });
     }
 
     // Parse Slot elements (with children) - must be before Text parsing
