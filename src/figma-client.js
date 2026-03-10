@@ -1047,6 +1047,9 @@ export class FigmaClient {
 
           if (svgData) {
             // Real SVG icon from Iconify
+            // IMPORTANT: createNodeFromSvg creates a Frame wrapper. We must:
+            // 1. Clear fills on the wrapper frame (otherwise it shows as a filled square)
+            // 2. Only colorize the vector children inside, not the wrapper
             const colorCode = icBg.startsWith('var:') ? '' : (() => {
               const rgb = this.hexToRgb(icBg);
               return rgb ? `
@@ -1055,7 +1058,7 @@ export class FigmaClient {
               if (n.strokes && n.strokes.length > 0) n.strokes = [{type:'SOLID',color:{r:${rgb.r},g:${rgb.g},b:${rgb.b}}}];
               if (n.children) n.children.forEach(colorize${idx});
             }
-            colorize${idx}(el${idx});` : '';
+            if (el${idx}.children) el${idx}.children.forEach(colorize${idx});` : '';
             })();
 
             // Variable color binding for icons
@@ -1068,13 +1071,14 @@ export class FigmaClient {
                 if (n.strokes && n.strokes.length > 0) n.strokes = [figma.variables.setBoundVariableForPaint({type:'SOLID',color:{r:0.5,g:0.5,b:0.5}},'color',vars[${JSON.stringify(varName)}])];
                 if (n.children) n.children.forEach(colorizeVar${idx});
               }
-              colorizeVar${idx}(el${idx});
+              if (el${idx}.children) el${idx}.children.forEach(colorizeVar${idx});
             }`;
             })() : '';
 
             return `
         const el${idx} = figma.createNodeFromSvg(${JSON.stringify(svgData)});
         el${idx}.name = ${JSON.stringify(icName)};
+        el${idx}.fills = [];
         el${idx}.resize(${icSize}, ${icSize});
         ${colorCode}${varColorCode}
         ${parentVar}.appendChild(el${idx});`;
