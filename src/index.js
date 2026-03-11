@@ -23,6 +23,11 @@ function unescapeShell(str) {
   return str.replace(/\\!/g, '!');
 }
 
+// Platform detection (must be before daemon functions that use these)
+const IS_WINDOWS = platform() === 'win32';
+const IS_MAC = platform() === 'darwin';
+const IS_LINUX = platform() === 'linux';
+
 // Daemon configuration
 const DAEMON_PORT = 3456;
 const DAEMON_PID_FILE = join(homedir(), '.figma-cli-daemon.pid');
@@ -305,11 +310,6 @@ function stopDaemon() {
     }
   } catch {}
 }
-
-// Platform detection
-const IS_WINDOWS = platform() === 'win32';
-const IS_MAC = platform() === 'darwin';
-const IS_LINUX = platform() === 'linux';
 
 // Platform-specific Figma paths and commands
 function getFigmaPath() {
