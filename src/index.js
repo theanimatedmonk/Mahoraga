@@ -6,10 +6,10 @@ import ora from 'ora';
 import { execSync, spawn } from 'child_process';
 import { randomBytes } from 'crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, join } from 'path';
 import { createInterface } from 'readline';
-import { homedir, platform } from 'os';
+import { homedir, platform, tmpdir } from 'os';
 import { createServer } from 'http';
 import { FigJamClient } from './figjam-client.js';
 import { FigmaClient } from './figma-client.js';
@@ -77,7 +77,8 @@ function isDaemonRunning(returnDetails = false) {
   try {
     const token = getDaemonToken();
     const tokenHeader = token ? ` -H "X-Daemon-Token: ${token}"` : '';
-    const response = execSync(`curl -s -o /dev/null -w "%{http_code}"${tokenHeader} http://localhost:${DAEMON_PORT}/health`, {
+    const nullDev = IS_WINDOWS ? 'NUL' : '/dev/null';
+    const response = execSync(`curl -s -o ${nullDev} -w "%{http_code}"${tokenHeader} http://localhost:${DAEMON_PORT}/health`, {
       encoding: 'utf8',
       stdio: 'pipe',
       timeout: 1000
@@ -224,16 +225,35 @@ function startDaemon(forceRestart = false, mode = 'auto') {
   // If force restart, always kill existing daemon first
   if (forceRestart) {
     stopDaemon();
-    // Wait longer for port to be released (0.3s was too short)
-    try { execSync('sleep 0.5', { stdio: 'pipe' }); } catch {}
+    // Wait for port to be released (cross-platform)
+    if (IS_WINDOWS) {
+      try { execSync('ping -n 2 127.0.0.1 >nul', { stdio: 'pipe' }); } catch {}
+    } else {
+      try { execSync('sleep 0.5', { stdio: 'pipe' }); } catch {}
+    }
 
     // Double-check port is free
     try {
-      const portCheck = execSync(`lsof -ti:${DAEMON_PORT} 2>/dev/null || true`, { encoding: 'utf8', stdio: 'pipe' });
-      if (portCheck.trim()) {
-        // Port still in use, wait more and force kill
-        try { execSync(`lsof -ti:${DAEMON_PORT} | xargs kill -9 2>/dev/null || true`, { stdio: 'pipe' }); } catch {}
-        try { execSync('sleep 0.3', { stdio: 'pipe' }); } catch {}
+      if (IS_MAC || IS_LINUX) {
+        const portCheck = execSync(`lsof -ti:${DAEMON_PORT} 2>/dev/null || true`, { encoding: 'utf8', stdio: 'pipe' });
+        if (portCheck.trim()) {
+          try { execSync(`lsof -ti:${DAEMON_PORT} | xargs kill -9 2>/dev/null || true`, { stdio: 'pipe' }); } catch {}
+          try { execSync('sleep 0.3', { stdio: 'pipe' }); } catch {}
+        }
+      } else if (IS_WINDOWS) {
+        // Re-run Windows port cleanup
+        try {
+          const result = execSync(`netstat -ano | findstr :${DAEMON_PORT}`, { encoding: 'utf8', stdio: 'pipe' });
+          const lines = result.split('\n').filter(l => l.includes('LISTENING'));
+          for (const line of lines) {
+            const parts = line.trim().split(/\s+/);
+            const pid = parts[parts.length - 1];
+            if (pid && /^\d+$/.test(pid)) {
+              execSync(`taskkill /PID ${pid} /F 2>nul`, { stdio: 'pipe' });
+            }
+          }
+          try { execSync('ping -n 1 127.0.0.1 >nul', { stdio: 'pipe' }); } catch {}
+        } catch {}
       }
     } catch {}
   } else if (isDaemonRunning()) {
@@ -390,12 +410,12 @@ function figmaEvalSync(code) {
       // For simple expressions and multi-statement code, just pass through
       // The plugin will add return to the last statement
       const payload = JSON.stringify({ action: 'eval', code: wrappedCode });
-      const payloadFile = `/tmp/figma-payload-${Date.now()}.json`;
+      const payloadFile = join(tmpdir(), `figma-payload-${Date.now()}.json`);
       writeFileSync(payloadFile, payload);
       const daemonToken = getDaemonToken();
       const tokenHeader = daemonToken ? ` -H "X-Daemon-Token: ${daemonToken}"` : '';
       const result = execSync(
-        `curl -s -X POST http://127.0.0.1:${DAEMON_PORT}/exec -H "Content-Type: application/json"${tokenHeader} -d @${payloadFile}`,
+        `curl -s -X POST http://127.0.0.1:${DAEMON_PORT}/exec -H "Content-Type: application/json"${tokenHeader} -d @"${payloadFile}"`,
         { encoding: 'utf8', timeout: 60000 }
       );
       try { unlinkSync(payloadFile); } catch {}
@@ -422,11 +442,15 @@ function figmaEvalSync(code) {
   }
 
   // Fallback: direct connection via temp script
-  const tempFile = join('/tmp', `figma-eval-${Date.now()}.mjs`);
-  const resultFile = join('/tmp', `figma-result-${Date.now()}.json`);
+  const tempFile = join(tmpdir(), `figma-eval-${Date.now()}.mjs`);
+  const resultFile = join(tmpdir(), `figma-result-${Date.now()}.json`);
+
+  // Use file:// URL for ESM import (required on Windows)
+  const clientUrl = pathToFileURL(join(process.cwd(), 'src/figma-client.js')).href;
+  const resultPath = resultFile.replace(/\\/g, '\\\\');
 
   const script = `
-    import { FigmaClient } from '${join(process.cwd(), 'src/figma-client.js').replace(/\\/g, '/')}';
+    import { FigmaClient } from '${clientUrl}';
     import { writeFileSync } from 'fs';
 
     (async () => {
@@ -434,25 +458,27 @@ function figmaEvalSync(code) {
         const client = new FigmaClient();
         await client.connect();
         const result = await client.eval(${JSON.stringify(code)});
-        writeFileSync('${resultFile}', JSON.stringify({ success: true, result }));
+        writeFileSync('${resultPath}', JSON.stringify({ success: true, result }));
         client.close();
       } catch (e) {
-        writeFileSync('${resultFile}', JSON.stringify({ success: false, error: e.message }));
+        writeFileSync('${resultPath}', JSON.stringify({ success: false, error: e.message }));
       }
     })();
   `;
 
   writeFileSync(tempFile, script);
   try {
-    execSync(`node ${tempFile}`, { stdio: 'pipe', timeout: 60000 });
+    execSync(`node "${tempFile}"`, { stdio: 'pipe', timeout: 60000 });
     if (existsSync(resultFile)) {
       const data = JSON.parse(readFileSync(resultFile, 'utf8'));
-      try { execSync(`rm -f ${tempFile} ${resultFile}`, { stdio: 'pipe' }); } catch {}
+      try { unlinkSync(tempFile); } catch {}
+      try { unlinkSync(resultFile); } catch {}
       if (data.success) return data.result;
       throw new Error(data.error);
     }
   } catch (e) {
-    try { execSync(`rm -f ${tempFile} ${resultFile}`, { stdio: 'pipe' }); } catch {}
+    try { unlinkSync(tempFile); } catch {}
+    try { unlinkSync(resultFile); } catch {}
     throw e;
   }
   return null;
@@ -592,7 +618,7 @@ function checkConnectionSync() {
   // Fallback: check CDP directly
   try {
     const port = getCdpPort();
-    execSync(`curl -s http://localhost:${port}/json > /dev/null`, { stdio: 'pipe', timeout: 2000 });
+    execSync(`curl -s http://localhost:${port}/json`, { stdio: 'pipe', timeout: 2000 });
     return true;
   } catch {
     console.log(chalk.red('\n✗ Not connected to Figma\n'));
@@ -1914,7 +1940,16 @@ daemon
 
     let portPid = null;
     try {
-      portPid = execSync(`lsof -ti:${DAEMON_PORT} 2>/dev/null || true`, { encoding: 'utf8', stdio: 'pipe' }).trim();
+      if (IS_MAC || IS_LINUX) {
+        portPid = execSync(`lsof -ti:${DAEMON_PORT} 2>/dev/null || true`, { encoding: 'utf8', stdio: 'pipe' }).trim();
+      } else if (IS_WINDOWS) {
+        const result = execSync(`netstat -ano | findstr :${DAEMON_PORT}`, { encoding: 'utf8', stdio: 'pipe' });
+        const line = result.split('\n').find(l => l.includes('LISTENING'));
+        if (line) {
+          const parts = line.trim().split(/\s+/);
+          portPid = parts[parts.length - 1];
+        }
+      }
     } catch {}
 
     if (portPid) {
@@ -3146,7 +3181,7 @@ program
     const spinner = ora('Taking screenshot of ' + url + '...').start();
 
     try {
-      const tempFile = '/tmp/figma-cli-screenshot.png';
+      const tempFile = join(tmpdir(), 'figma-cli-screenshot.png');
 
       // Build capture-website command
       let cmd = `npx --yes capture-website-cli "${url}" --output="${tempFile}" --width=${options.width} --height=${options.height} --scale-factor=${options.scale}`;
@@ -3284,16 +3319,16 @@ const { chromium } = require('playwright');
   });
 
   console.log(JSON.stringify(data, null, 2));
-  ${options.screenshot ? "await page.screenshot({ path: '/tmp/analyze-screenshot.png' });" : ''}
+  ${options.screenshot ? `await page.screenshot({ path: '${join(tmpdir(), 'analyze-screenshot.png').replace(/\\/g, '\\\\')}' });` : ''}
   await browser.close();
 })();
 `;
 
       // Write and run script
-      const scriptPath = '/tmp/figma-analyze-url.js';
+      const scriptPath = join(tmpdir(), 'figma-analyze-url.js');
       writeFileSync(scriptPath, script);
 
-      const result = execSync(`cd /tmp && node figma-analyze-url.js`, {
+      const result = execSync(`node "${scriptPath}"`, {
         encoding: 'utf8',
         timeout: 90000,
         maxBuffer: 10 * 1024 * 1024
@@ -3448,10 +3483,10 @@ const { chromium } = require('playwright');
 })();
 `;
 
-      const scriptPath = '/tmp/figma-recreate-analyze.js';
+      const scriptPath = join(tmpdir(), 'figma-recreate-analyze.js');
       writeFileSync(scriptPath, analyzeScript);
 
-      const analysisResult = execSync('cd /tmp && node figma-recreate-analyze.js', {
+      const analysisResult = execSync(`node "${scriptPath}"`, {
         encoding: 'utf8',
         timeout: 90000,
         maxBuffer: 10 * 1024 * 1024
@@ -3700,7 +3735,7 @@ program
     const spinner = ora('Exporting selected image...').start();
 
     try {
-      const tempInput = '/tmp/figma-cli-removebg-input.png';
+      const tempInput = join(tmpdir(), 'figma-cli-removebg-input.png');
 
       // Export selected node as PNG
       let exportCmd = 'export png --scale 2 --output "' + tempInput + '"';
