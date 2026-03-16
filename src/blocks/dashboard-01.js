@@ -65,7 +65,7 @@ export const sidebarJsx = `
 // Uses variable binding for all colors
 export function getMainContentCode(dashboardNodeId) {
   return `(async function() {
-  var dashboard = figma.getNodeById('${dashboardNodeId}');
+  var dashboard = await figma.getNodeByIdAsync('${dashboardNodeId}');
   if (!dashboard) return 'Dashboard not found';
 
   await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
