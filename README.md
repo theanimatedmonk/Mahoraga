@@ -301,6 +301,10 @@ Once connected (via Claude Code or Cursor), just talk to your AI:
 
 > "Add a card component with button and input"
 
+> "Save the selected frame as login-card"
+
+> "Drop login-card into my canvas"
+
 > "Check accessibility"
 
 > "Export variables as CSS"
@@ -547,6 +551,17 @@ Token is stored at `~/.Mahoraga/.mahoraga-token` with owner-only permissions (06
 - Components from frames
 - Component instances
 - **Component sets with variants**
+
+### Drop System (Save & Reuse)
+
+- **Save any frame** from canvas as a reusable drop (`drop save <name>`)
+- **Drop saved frames** back onto canvas anytime (`drop in <name>`)
+- **List all drops** — built-in templates + your saved frames (`drop list`)
+- **Variable bindings preserved** — color variables are captured alongside the frame
+- **Rebind variables** on drop — clone a frame with a different variable set (e.g. persona cards)
+- **SVG-faithful serialization** — vector shapes, icons, and polygons are saved as SVG data for pixel-perfect recreation
+- **Icon drops** — insert any Iconify icon directly (`drop icon mdi:star --size 32`)
+- Built-in Android templates: Bottom Sheet, FAB, Top App Bar
 
 ### JSX Rendering
 
