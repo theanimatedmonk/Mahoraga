@@ -1,14 +1,14 @@
 /**
  * Figma CLI Bridge Plugin
  *
- * Safe Mode: Connects to CLI daemon via WebSocket
+ * Safe Mode: Connects to CLI (Mahoraga) via WebSocket
  * No debug port needed, no patching required.
  */
 
 // Show minimal UI (needed for WebSocket connection)
 figma.showUI(__html__, {
   width: 160,
-  height: 72,
+  height: 280,
   position: { x: -9999, y: 9999 }  // Bottom-left (push to far left)
 });
 

@@ -1,5 +1,5 @@
 {
-  "name": "FigCli",
+  "name": "FigIDE",
   "id": "figma-cli-bridge",
   "api": "1.0.0",
   "main": "code.js",
@@ -11,6 +11,6 @@
   "documentAccess": "dynamic-page",
   "networkAccess": {
     "allowedDomains": ["*"],
-    "reasoning": "Connects to local CLI daemon for command execution"
+    "reasoning": "Connects to local CLI bridge (Mahoraga) for command execution"
   }
 }

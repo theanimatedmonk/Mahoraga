@@ -5,61 +5,177 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: Inter, -apple-system, sans-serif;
-      font-size: 11px;
-      background: #2c2c2c;
+      background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
       color: #fff;
-      height: 100%;
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      padding: 10px 12px;
-      gap: 4px;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      overflow: hidden;
     }
-    .row {
+
+    .wheel-container {
+      width: 120px;
+      height: 120px;
       display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
     }
+
+    #wheel-img {
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
+      opacity: 0.85;
+      transform-origin: 50% 50%;
+      transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #wheel-img.full-spin {
+      transition: transform 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .wheel-placeholder {
+      width: 100px;
+      height: 100px;
+      border: 2px dashed #444;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #555;
+      font-size: 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.3s;
+    }
+    .wheel-placeholder:hover { border-color: #888; }
+
+    .brand {
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: 1px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
       background: #666;
+      flex-shrink: 0;
     }
     .dot.connecting { background: #f59e0b; animation: pulse 1s infinite; }
     .dot.connected { background: #22c55e; }
     .dot.error { background: #ef4444; }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
     }
-    .title { font-weight: 600; font-size: 12px; }
-    #status { color: #aaa; }
-    .hint { font-size: 9px; color: #666; margin-top: 2px; }
+
+    #status {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: #666;
+    }
+
+    #disconnect-btn {
+      background: none;
+      border: 1px solid #333;
+      color: #666;
+      font-family: inherit;
+      font-size: 10px;
+      padding: 4px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: none;
+    }
+    #disconnect-btn:hover {
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+    
   </style>
 </head>
 <body>
-  <div class="title">Figma DS CLI</div>
-  <div class="row">
+
+  <div class="wheel-container" id="wheel-container">
+    <img id="wheel-img" alt="wheel" onerror="this.style.display='none'; document.getElementById('wheel-placeholder').style.display='flex';" />
+    <div class="wheel-placeholder" id="wheel-placeholder" style="display:none;" title="Put wheel.png in plugin/assets/">
+      Place<br>wheel.png<br>in assets/
+    </div>
+  </div>
+
+  <div class="brand">Mahoraga</div>
+
+  <div class="status-row">
     <div id="dot" class="dot connecting"></div>
     <span id="status">Connecting...</span>
   </div>
+
   <div class="hint">Keep this window open</div>
+  <button id="disconnect-btn">Disconnect</button>
 
   <script>
-    // Scan ports 3456-3460 in PARALLEL for fast connection
+    // ── Wheel image (base64-embedded because Figma plugin sandbox blocks file:// paths) ──
+    // Source: plugin/assets/wheel.png
+    const WHEEL_DATA = 'data:image/png;base64,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';
+    const wheelImg = document.getElementById('wheel-img');
+    wheelImg.src = WHEEL_DATA;
+    let currentRotation = 0;
+
+    function spinWheel(degrees = 90) {
+      if (!wheelImg || wheelImg.style.display === 'none') return;
+      currentRotation += degrees;
+      wheelImg.style.transform = `rotate(${currentRotation}deg)`;
+    }
+
+    function fullSpin() {
+      if (!wheelImg || wheelImg.style.display === 'none') return;
+      wheelImg.classList.add('full-spin');
+      currentRotation += 360;
+      wheelImg.style.transform = `rotate(${currentRotation}deg)`;
+      setTimeout(() => wheelImg.classList.remove('full-spin'), 1300);
+    }
+
+    // ── WebSocket connection ──
     const PORTS = [3456, 3457, 3458, 3459, 3460];
     let ws = null;
     let reconnectTimer = null;
     let keepaliveTimer = null;
     const statusEl = document.getElementById('status');
     const dotEl = document.getElementById('dot');
+    const disconnectBtn = document.getElementById('disconnect-btn');
+    let manualDisconnect = false;
 
     function setStatus(text, state) {
       statusEl.textContent = text;
       dotEl.className = 'dot ' + state;
+      disconnectBtn.style.display = state === 'connected' ? 'block' : 'none';
     }
 
-    // Try all ports in parallel, use first successful connection
+    disconnectBtn.addEventListener('click', () => {
+      manualDisconnect = true;
+      clearTimeout(reconnectTimer);
+      stopKeepalive();
+      if (ws) { ws.onclose = null; ws.close(); ws = null; }
+      setStatus('Disconnected', 'error');
+      parent.postMessage({ pluginMessage: { type: 'disconnected' } }, '*');
+      setTimeout(() => { manualDisconnect = false; }, 500);
+    });
+
     function connectParallel() {
       if (ws && ws.readyState === WebSocket.OPEN) return;
 
@@ -74,50 +190,37 @@
           attempts.push(socket);
 
           socket.onopen = () => {
-            if (connected) {
-              socket.close();
-              return;
-            }
+            if (connected) { socket.close(); return; }
             connected = true;
             ws = socket;
 
-            // Close other attempts (silently, no handlers)
             attempts.forEach(s => {
               if (s !== socket) {
-                s.onclose = null;  // Prevent triggering reconnect
+                s.onclose = null;
                 s.onerror = null;
                 try { s.close(); } catch {}
               }
             });
 
-            // NOW set handlers on winning socket only
             ws.onmessage = handleMessage;
             ws.onclose = handleClose;
             ws.onerror = handleClose;
 
             setStatus('Connected', 'connected');
             parent.postMessage({ pluginMessage: { type: 'connected' } }, '*');
-
-            // Send hello
             ws.send(JSON.stringify({ type: 'hello', mode: 'plugin', version: '1.3.0' }));
-
-            // Start keepalive (ping every 10s)
             startKeepalive();
+            fullSpin();
           };
 
-          // During scan: ignore close/error (don't trigger reconnect)
           socket.onclose = () => {};
           socket.onerror = () => {};
         } catch (e) {}
       });
 
-      // If no connection after 1.5s, retry (faster than 3s)
       setTimeout(() => {
         if (!connected) {
-          attempts.forEach(s => {
-            s.onclose = null;
-            try { s.close(); } catch {}
-          });
+          attempts.forEach(s => { s.onclose = null; try { s.close(); } catch {} });
           clearTimeout(reconnectTimer);
           reconnectTimer = setTimeout(connectParallel, 300);
         }
@@ -134,21 +237,23 @@
           }, '*');
         }
 
-        // Batch eval support
         if (msg.action === 'eval-batch') {
           parent.postMessage({
             pluginMessage: { type: 'eval-batch', id: msg.id, codes: msg.codes }
           }, '*');
         }
 
-        // Daemon pings us
         if (msg.action === 'ping') {
           ws.send(JSON.stringify({ type: 'pong', id: msg.id }));
         }
 
-        // Daemon responds to our ping
         if (msg.type === 'pong') {
           lastPong = Date.now();
+        }
+
+        // Wheel spin on drop save
+        if (msg.action === 'wheel-spin') {
+          spinWheel();
         }
       } catch (e) {
         console.error('Message parse error:', e);
@@ -156,14 +261,12 @@
     }
 
     function handleClose() {
-      // Only show reconnecting if we were the active connection
+      if (manualDisconnect) return;
       if (ws && ws.readyState !== WebSocket.OPEN) {
         ws = null;
         setStatus('Reconnecting...', 'connecting');
         stopKeepalive();
         parent.postMessage({ pluginMessage: { type: 'disconnected' } }, '*');
-
-        // Fast reconnect (200ms)
         clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(connectParallel, 200);
       }
@@ -176,57 +279,38 @@
       lastPong = Date.now();
       keepaliveTimer = setInterval(() => {
         if (ws && ws.readyState === WebSocket.OPEN) {
-          // Check if we got a pong recently (within 8s for faster detection)
           if (Date.now() - lastPong > 8000) {
-            console.log('No pong received, reconnecting...');
             ws.close();
             return;
           }
           ws.send(JSON.stringify({ type: 'ping' }));
         }
-      }, 3000);  // Ping every 3s for faster dead connection detection
+      }, 3000);
     }
 
     function stopKeepalive() {
-      if (keepaliveTimer) {
-        clearInterval(keepaliveTimer);
-        keepaliveTimer = null;
-      }
+      if (keepaliveTimer) { clearInterval(keepaliveTimer); keepaliveTimer = null; }
     }
 
-    // Legacy function name for compatibility
     function connect() { connectParallel(); }
 
-    // Receive results from plugin main thread
     window.onmessage = (event) => {
       const msg = event.data.pluginMessage;
       if (!msg) return;
 
       if (msg.type === 'result') {
-        // Send result back to CLI via WebSocket
         if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            type: 'result',
-            id: msg.id,
-            result: msg.result,
-            error: msg.error
-          }));
+          ws.send(JSON.stringify({ type: 'result', id: msg.id, result: msg.result, error: msg.error }));
         }
       }
 
-      // Batch result forwarding (CRITICAL for render-batch stability)
       if (msg.type === 'batch-result') {
         if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            type: 'batch-result',
-            id: msg.id,
-            results: msg.results
-          }));
+          ws.send(JSON.stringify({ type: 'batch-result', id: msg.id, results: msg.results }));
         }
       }
     };
 
-    // Start connection
     connect();
   </script>
 </body>

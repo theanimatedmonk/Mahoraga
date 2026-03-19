@@ -85,38 +85,42 @@ export class FigmaClient {
           // Enable Runtime to discover execution contexts (needed for Figma v39+)
           await this.send('Runtime.enable');
 
-          // Give time for context events to arrive
-          await new Promise(r => setTimeout(r, 500));
+          // Retry loop: Figma v39+ sandboxed contexts may take time to appear
+          const maxAttempts = 10;
+          for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            await new Promise(r => setTimeout(r, attempt === 0 ? 500 : 1000));
 
-          // First try default context (works on older Figma versions)
-          const defaultCheck = await this.send('Runtime.evaluate', {
-            expression: 'typeof figma !== "undefined"',
-            returnByValue: true
-          });
-
-          if (defaultCheck.result?.result?.value === true) {
-            // figma is in default context (older Figma)
-            this.executionContextId = null;
-            resolve(this);
-            return;
-          }
-
-          // Figma v39+: search all execution contexts for figma
-          for (const ctx of executionContexts) {
-            try {
-              const check = await this.send('Runtime.evaluate', {
+            // First try default context (works on older Figma versions)
+            if (attempt === 0) {
+              const defaultCheck = await this.send('Runtime.evaluate', {
                 expression: 'typeof figma !== "undefined"',
-                contextId: ctx.id,
                 returnByValue: true
               });
 
-              if (check.result?.result?.value === true) {
-                this.executionContextId = ctx.id;
+              if (defaultCheck.result?.result?.value === true) {
+                this.executionContextId = null;
                 resolve(this);
                 return;
               }
-            } catch {
-              // Context may have been destroyed, skip
+            }
+
+            // Figma v39+: search all execution contexts for figma
+            for (const ctx of executionContexts) {
+              try {
+                const check = await this.send('Runtime.evaluate', {
+                  expression: 'typeof figma !== "undefined"',
+                  contextId: ctx.id,
+                  returnByValue: true
+                });
+
+                if (check.result?.result?.value === true) {
+                  this.executionContextId = ctx.id;
+                  resolve(this);
+                  return;
+                }
+              } catch {
+                // Context may have been destroyed, skip
+              }
             }
           }
 

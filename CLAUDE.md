@@ -154,10 +154,10 @@ Uses plugin, no Figma modification. Start plugin each session.
 ```bash
 node src/index.js connect --safe
 ```
-Then: Plugins → Development → FigCli
+Then: Plugins → Development → FigIDE
 
 **Safe Mode Notes:**
-- All commands work via daemon (no figma-use dependency)
+- All commands work via mahoraga (no figma-use dependency)
 - 60s timeout (same as Yolo Mode)
 - **CRITICAL: `render-batch` does NOT render text properly in Safe Mode!**
 - Use `eval` with direct Figma API for components with text
@@ -756,11 +756,42 @@ node src/index.js screenshot-url "https://example.com"
 
 ---
 
-## Speed Daemon
+## Drop — Component Drop-in System
 
-`connect` auto-starts daemon for 10x faster commands.
+Drop pre-built components onto the canvas by name. Supports code templates and user-saved components.
 
 ```bash
-node src/index.js daemon status
-node src/index.js daemon restart
+node src/index.js drop list                    # List all available drops
+node src/index.js drop list -c android         # Filter by category
+node src/index.js drop categories              # List categories
+node src/index.js drop in android bottom-sheet # Drop a component
+node src/index.js drop in fab                  # Aliases work too
+node src/index.js drop in top app bar          # Multi-word names work
+```
+
+### Save & Reuse
+
+When the user creates something and says "save this as a drop", select it in Figma then:
+```bash
+node src/index.js drop save "My Component"              # Save selection
+node src/index.js drop save "Header" -c layout -a hero  # Save with category + alias
+node src/index.js drop remove my-component              # Remove saved drop
+```
+
+When the user says "drop in a bottom sheet" or "add an android FAB", use the `drop in` command.
+
+Drop registry:
+- `src/drops/index.js` — built-in template drops
+- `src/drops/saved.json` — user-saved drops (auto-loaded at runtime)
+- `src/drops/serializer.js` — captures Figma selection as JSON, generates code at runtime
+
+---
+
+## Mahoraga (Bridge Server)
+
+`connect` auto-starts Mahoraga for 10x faster commands.
+
+```bash
+node src/index.js mahoraga status
+node src/index.js mahoraga restart
 ```

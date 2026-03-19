@@ -21,8 +21,8 @@ NC='\033[0m'
 
 # ── Config helpers ──
 
-get_daemon_token() {
-    local token_file="$HOME/.figma-ds-cli/.daemon-token"
+get_mahoraga_token() {
+    local token_file="$HOME/.figma-ds-cli/.mahoraga-token"
     if [ -f "$token_file" ]; then
         cat "$token_file" 2>/dev/null
     fi
@@ -203,17 +203,17 @@ else
     fi
 
     if [ "$CDP_OK" = true ]; then
-        # Figma is already accessible — just ensure daemon is running
-        DAEMON_OK=false
-        DAEMON_TOKEN=$(get_daemon_token)
-        if [ -n "$DAEMON_TOKEN" ]; then
-            if curl -s -o /dev/null -w "%{http_code}" -H "X-Daemon-Token: $DAEMON_TOKEN" http://localhost:3456/health 2>/dev/null | grep -q "200"; then
-                DAEMON_OK=true
+        # Figma is already accessible — just ensure mahoraga is running
+        MAHORAGA_OK=false
+        MAHORAGA_TOKEN=$(get_mahoraga_token)
+        if [ -n "$MAHORAGA_TOKEN" ]; then
+            if curl -s -o /dev/null -w "%{http_code}" -H "X-Mahoraga-Token: $MAHORAGA_TOKEN" http://localhost:3456/health 2>/dev/null | grep -q "200"; then
+                MAHORAGA_OK=true
             fi
         fi
-        if [ "$DAEMON_OK" = false ]; then
-            echo -e "  Starting daemon..."
-            node "$CLI" daemon restart > /dev/null 2>&1
+        if [ "$MAHORAGA_OK" = false ]; then
+            echo -e "  Starting Mahoraga..."
+            node "$CLI" mahoraga restart > /dev/null 2>&1
             sleep 1
         fi
         echo -e "  ${GREEN}✓ Connected${NC}"
