@@ -1,7 +1,6 @@
 # Mahoraga
 
 <p align="center">
-  <a href="https://intodesignsystems.com"><img src="https://img.shields.io/badge/Into_Design_Systems-intodesignsystems.com-ff6b35" alt="Into Design Systems"></a>
   <img src="https://img.shields.io/badge/Figma-Desktop-purple" alt="Figma Desktop">
   <img src="https://img.shields.io/badge/No_API_Key-Required-green" alt="No API Key">
   <img src="https://img.shields.io/badge/Claude_Code-Ready-blue" alt="Claude Code">
@@ -155,11 +154,93 @@ Both contain:
 
 ---
 
+## Cursor Setup (IDE-based)
+
+Use Mahoraga directly from Cursor instead of the terminal. Uses **Safe Mode** (plugin-based) — the AI runs the same CLI commands via Cursor's built-in shell.
+
+### Why Cursor?
+
+| | Cursor (IDE) | Claude Code (Terminal) |
+|---|---|---|
+| Interface | Full IDE with file browser, tabs, images | Terminal only |
+| Connection | Safe Mode (plugin) | Yolo Mode (CDP) or Safe Mode |
+| How it works | Cursor reads `.cursor/rules/figma-cli.mdc` | Claude reads `CLAUDE.md` |
+| Interaction | Chat in IDE sidebar | Chat in terminal |
+| Security | Safe Mode only — ideal for company devices where you don't want to give CLI full driver access | Yolo Mode requires Full Disk Access |
+
+Both run the exact same CLI commands under the hood.
+
+### Setup Steps
+
+**1. Clone and install**
+
+```bash
+git clone https://github.com/theanimatedmonk/Mahoraga.git
+cd Mahoraga
+npm install
+```
+
+**2. Open the project in Cursor**
+
+```bash
+cursor .
+```
+
+The project includes a `.cursor/rules/figma-cli.mdc` file that automatically teaches Cursor's AI all available commands — the same role `CLAUDE.md` plays for Claude Code.
+
+**3. Import the FigIDE plugin into Figma (one-time)**
+
+1. Open Figma Desktop
+2. Go to **Plugins → Development → Import plugin from manifest**
+3. Navigate to `Mahoraga/plugin/manifest.json`
+4. Click **Open**
+
+> **Tip:** Right-click the plugin → **Add to toolbar** for one-click access.
+
+**4. Start the connection**
+
+Each session, do these two things:
+
+**In Cursor's terminal:**
+```bash
+node src/index.js connect --safe
+```
+
+**In Figma:**
+1. Open a design file
+2. Run the plugin: **Plugins → Development → FigIDE**
+3. You should see a green "Connected" dot in the plugin window
+
+**5. Start designing**
+
+Now just chat with Cursor's AI in the sidebar:
+
+> "Create a button with rounded corners"
+
+> "Add shadcn colors to my project"
+
+> "Design a card with a title and description"
+
+The AI translates your requests into CLI commands and executes them. Keep the FigIDE plugin window open in Figma while working.
+
+### Quick Reference for Cursor
+
+| You say | What happens |
+|---------|-------------|
+| "Create a blue button" | AI runs `node src/index.js render '<Frame ...>'` |
+| "Add shadcn colors" | AI runs `node src/index.js tokens preset shadcn` |
+| "What's on the canvas?" | AI runs `node src/index.js eval "figma.currentPage.children..."` |
+| "Export as PNG" | AI runs `node src/index.js export png` |
+
+You never need to type commands manually — just talk naturally.
+
+---
+
 ## Setup (Claude Code)
 
 ```bash
-git clone https://github.com/silships/figma-cli.git
-cd figma-cli
+git clone https://github.com/theanimatedmonk/Mahoraga.git
+cd Mahoraga
 npm install
 npm run setup-alias
 source ~/.zshrc
@@ -202,92 +283,11 @@ This uses a Figma plugin instead of patching. See [Safe Mode](#-safe-mode--for-r
 ### Manual Setup (without fig-start)
 
 ```bash
-cd figma-cli
+cd Mahoraga
 claude
 ```
 
 Then tell Claude: `Connect to Figma`
-
----
-
-## Cursor Setup (IDE-based)
-
-Use figma-cli directly from Cursor instead of the terminal. Uses **Safe Mode** (plugin-based) — the AI runs the same CLI commands via Cursor's built-in shell.
-
-### Why Cursor?
-
-| | Claude Code (Terminal) | Cursor (IDE) |
-|---|---|---|
-| Interface | Terminal only | Full IDE with file browser, tabs, images |
-| Connection | Yolo Mode (CDP) or Safe Mode | Safe Mode (plugin) |
-| How it works | Claude reads `CLAUDE.md` | Cursor reads `.cursor/rules/figma-cli.mdc` |
-| Interaction | Chat in terminal | Chat in IDE sidebar |
-
-Both run the exact same CLI commands under the hood.
-
-### Setup Steps
-
-**1. Clone and install**
-
-```bash
-git clone https://github.com/silships/figma-cli.git
-cd figma-cli
-npm install
-```
-
-**2. Open the project in Cursor**
-
-```bash
-cursor .
-```
-
-The project includes a `.cursor/rules/figma-cli.mdc` file that automatically teaches Cursor's AI all available commands — the same role `CLAUDE.md` plays for Claude Code.
-
-**3. Import the FigIDE plugin into Figma (one-time)**
-
-1. Open Figma Desktop
-2. Go to **Plugins → Development → Import plugin from manifest**
-3. Navigate to `figma-cli/plugin/manifest.json`
-4. Click **Open**
-
-> **Tip:** Right-click the plugin → **Add to toolbar** for one-click access.
-
-**4. Start the connection**
-
-Each session, do these two things:
-
-**In Cursor's terminal:**
-```bash
-node src/index.js connect --safe
-```
-
-**In Figma:**
-1. Open a design file
-2. Run the plugin: **Plugins → Development → FigIDE**
-3. You should see a green "Connected" dot in the plugin window
-
-**5. Start designing**
-
-Now just chat with Cursor's AI in the sidebar:
-
-> "Create a button with rounded corners"
-
-> "Add shadcn colors to my project"
-
-> "Design a card with a title and description"
-
-The AI translates your requests into CLI commands and executes them. Keep the FigIDE plugin window open in Figma while working.
-
-### Quick Reference for Cursor
-
-| You say | What happens |
-|---------|-------------|
-| "Create a blue button" | AI runs `node src/index.js render '<Frame ...>'` |
-| "Add shadcn colors" | AI runs `node src/index.js tokens preset shadcn` |
-| "What's on the canvas?" | AI runs `node src/index.js eval "figma.currentPage.children..."` |
-| "Export as PNG" | AI runs `node src/index.js export png` |
-
-You never need to type commands manually — just talk naturally.
 
 ---
 
@@ -716,7 +716,7 @@ Token is stored at `~/.Mahoraga/.mahoraga-token` with owner-only permissions (06
 ## Authors
 
 **[Sil Bormueller](https://www.linkedin.com/in/silbormueller/)** -- [intodesignsystems.com](https://intodesignsystems.com)
-Original creator of Mahoraga.
+Original creator of figma-cli.
 
 **[Sajal Kumar](https://www.linkedin.com/in/sajalkumar247/)** -- [@deanimatedmonk](https://x.com/deanimatedmonk)
 Added Cursor IDE support (Safe Mode integration, `.cursor/rules`). Inspired by Sil's work on the original CLI.
