@@ -1,0 +1,163 @@
+---
+description: Figma CLI - Control Figma Desktop via shell commands using Chrome DevTools Protocol
+globs:
+alwaysApply: true
+---
+
+# Figma CLI - Cursor Integration
+
+You have access to a CLI that controls Figma Desktop directly via Chrome DevTools Protocol. No API key needed. Use the Shell tool to run commands.
+
+## Base Command
+
+All commands start with: `node src/index.js` (run from the figma-cli project root at /Users/sajal.k/Documents/FigmaClaudeCode/figma-cli)
+
+## Quick Reference
+
+| User says | Command |
+|-----------|---------|
+| "connect to figma" | `node src/index.js connect` |
+| "connect safe mode" | `node src/index.js connect --safe` |
+| "add shadcn colors" | `node src/index.js tokens preset shadcn` |
+| "add tailwind colors" | `node src/index.js tokens tailwind` |
+| "show colors on canvas" | `node src/index.js var visualize` |
+| "create dashboard" | `node src/index.js blocks create dashboard-01` |
+| "list variables" | `node src/index.js var list` |
+| "find nodes named X" | `node src/index.js find "X"` |
+| "what's on canvas" | `node src/index.js canvas info` |
+| "export as PNG/SVG" | `node src/index.js export png` |
+| "check accessibility" | `node src/index.js lint` |
+| "verify creation" | `node src/index.js verify` |
+
+## Connection
+
+```bash
+node src/index.js connect          # Yolo Mode (patches Figma, direct CDP)
+node src/index.js connect --safe   # Safe Mode (plugin bridge, no patching)
+node src/index.js status           # Check connection
+node src/index.js mahoraga status   # Check mahoraga
+```
+
+## Dropping Components
+
+```bash
+node src/index.js drop list                    # List all drops
+node src/index.js drop list -c android         # Filter by category
+node src/index.js drop in android bottom-sheet # Drop onto canvas
+node src/index.js drop in fab                  # Aliases work
+```
+
+When user says "drop in a ..." or "add a ...", use `drop in <name>`.
+
+### Save & Reuse
+
+When user creates something and says "save this as a drop":
+```bash
+node src/index.js drop save "My Card"                  # Save selection
+node src/index.js drop save "Header" -c layout -a hero # With category + alias
+node src/index.js drop remove my-card                  # Remove saved drop
+```
+
+## Creating Elements
+
+```bash
+node src/index.js create rect "Card" -w 320 -h 200 --fill "#fff" --radius 12
+node src/index.js create circle "Avatar" -w 48 --fill "#3b82f6"
+node src/index.js create text "Hello" -s 24 -c "#000" -w bold
+node src/index.js create line -l 200 -c "#e4e4e7"
+node src/index.js create autolayout "Card" -d col -g 16 -p 24 --fill "#fff"
+node src/index.js create icon lucide:star -s 24 -c "#f59e0b"
+node src/index.js create frame "Section" --fill "var:background"
+```
+
+## JSX Rendering (Complex Layouts)
+
+Use `render` for complex multi-element layouts:
+
+```bash
+node src/index.js render '<Frame name="Card" w={320} h={200} bg="#18181b" rounded={12} flex="col" p={24} gap={12}>
+  <Text size={18} weight="bold" color="#fff">Title</Text>
+  <Text size={14} color="#a1a1aa" w="fill">Description text</Text>
+  <Frame bg="#3b82f6" px={16} py={8} rounded={6} flex="row" justify="center" items="center">
+    <Text size={14} weight="medium" color="#fff">Button</Text>
+  </Frame>
+</Frame>'
+```
+
+### JSX Props
+
+- **Layout**: `flex="row"|"col"`, `gap={16}`, `p={24}`, `px={16}`, `py={8}`
+- **Alignment**: `justify="center"|"start"|"end"|"between"`, `items="center"|"start"|"end"`
+- **Size**: `w={320}`, `h={200}`, `w="fill"`, `h="fill"`, `grow={1}`
+- **Appearance**: `bg="#fff"`, `bg="var:card"`, `stroke="#000"`, `rounded={12}`, `opacity={0.8}`
+- **Text**: `<Text size={18} weight="bold" color="#fff" w="fill">Content</Text>`
+- **Icons**: `<Icon name="lucide:home" size={20} color="#fff" />`
+- **Slots**: `<Slot name="Content" flex="col" gap={8} />`
+
+### Variable Binding (var: syntax)
+
+Bind to design tokens inline: `bg="var:card"`, `color="var:foreground"`, `stroke="var:border"`
+
+Available shadcn variables: `background`, `foreground`, `card`, `card-foreground`, `primary`, `primary-foreground`, `secondary`, `secondary-foreground`, `muted`, `muted-foreground`, `accent`, `accent-foreground`, `border`, `input`, `ring`
+
+## Design Tokens
+
+```bash
+node src/index.js tokens preset shadcn    # 276 vars with Light/Dark mode
+node src/index.js tokens tailwind         # Tailwind color palette
+node src/index.js tokens ds               # IDS Base colors
+node src/index.js var list                # List all variables
+node src/index.js var delete-all          # Delete all variables
+```
+
+## shadcn Components
+
+```bash
+node src/index.js shadcn list             # List available components
+node src/index.js shadcn add --all        # Generate all 30 components
+node src/index.js shadcn add button card input tabs  # Specific ones
+```
+
+## Modify Elements
+
+```bash
+node src/index.js set fill "#3b82f6"       # Set fill color
+node src/index.js set fill "var:primary"   # Bind to variable
+node src/index.js set stroke "var:border"
+node src/index.js set radius 12
+node src/index.js select "1:234"           # Select by ID
+node src/index.js delete "1:234"           # Delete node
+node src/index.js duplicate "1:234"        # Duplicate
+```
+
+## Find & Query
+
+```bash
+node src/index.js find "Button"            # Find by name
+node src/index.js find --type COMPONENT    # Find by type
+node src/index.js get "1:234"              # Get node properties
+node src/index.js canvas info              # Canvas overview
+```
+
+## Export
+
+```bash
+node src/index.js export png               # Export as PNG
+node src/index.js export svg               # Export as SVG
+node src/index.js verify                   # Screenshot for verification
+```
+
+## Eval (Run Raw Figma Plugin API)
+
+```bash
+node src/index.js eval "figma.currentPage.children.map(n => n.name)"
+```
+
+## Critical Rules
+
+1. **Always use `render` for complex layouts** - has smart positioning
+2. **Never use `eval` to create elements** - no positioning, overlaps at (0,0)
+3. **Text wrapping**: ALL Text elements need `w="fill"` to wrap properly
+4. **Use real Lucide icons**: `<Icon name="lucide:home" />` not emojis
+5. **After creation**: Run `node src/index.js verify` to validate visually
+6. **Never delete existing nodes** without user permission

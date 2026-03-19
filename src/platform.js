@@ -55,7 +55,7 @@ function getPortPidWindows(port) {
 
 export const getPortPid = PLATFORM === 'win32' ? getPortPidWindows : getPortPidUnix;
 
-// --- Sleep after daemon stop ---
+// --- Sleep after mahoraga stop ---
 export function sleepAfterStop() {
   if (PLATFORM === 'win32') {
     try { execSync('ping -n 2 127.0.0.1 >nul', { stdio: 'pipe' }); } catch {}

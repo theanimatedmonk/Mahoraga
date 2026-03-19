@@ -16,6 +16,8 @@ import { FigmaClient } from './figma-client.js';
 import { isPatched, patchFigma, unpatchFigma, getFigmaCommand, getCdpPort, getFigmaBinaryPath } from './figma-patch.js';
 import { listComponents, getComponent, getAllComponents, VISUAL_COMPONENTS } from './shadcn.js';
 import { listBlocks, getBlock } from './blocks/index.js';
+import { listDrops, findDrop, getDropCategories, DROPS } from './drops/index.js';
+import { buildSerializerScript, saveDrop } from './drops/serializer.js';
 import {
   nullDevice, killPort, getPortPid, sleepAfterStop,
   startFigmaApp, killFigmaApp,
@@ -28,24 +30,24 @@ function unescapeShell(str) {
   return str.replace(/\\!/g, '!');
 }
 
-// Daemon configuration
-const DAEMON_PORT = 3456;
-const DAEMON_PID_FILE = join(homedir(), '.figma-cli-daemon.pid');
-const DAEMON_TOKEN_FILE = join(homedir(), '.figma-ds-cli', '.daemon-token');
+// Mahoraga configuration
+const MAHORAGA_PORT = 3456;
+const MAHORAGA_PID_FILE = join(homedir(), '.figma-cli-mahoraga.pid');
+const MAHORAGA_TOKEN_FILE = join(homedir(), '.figma-ds-cli', '.mahoraga-token');
 
-// Generate and save a new session token for daemon authentication
-function generateDaemonToken() {
+// Generate and save a new session token for mahoraga authentication
+function generateMahoragaToken() {
   const configDir = join(homedir(), '.figma-ds-cli');
   if (!existsSync(configDir)) mkdirSync(configDir, { recursive: true });
   const token = randomBytes(32).toString('hex');
-  writeFileSync(DAEMON_TOKEN_FILE, token, { mode: 0o600 });
+  writeFileSync(MAHORAGA_TOKEN_FILE, token, { mode: 0o600 });
   return token;
 }
 
-// Read the current daemon session token
-function getDaemonToken() {
+// Read the current mahoraga session token
+function getMahoragaToken() {
   try {
-    return readFileSync(DAEMON_TOKEN_FILE, 'utf8').trim();
+    return readFileSync(MAHORAGA_TOKEN_FILE, 'utf8').trim();
   } catch {
     return null;
   }
@@ -54,7 +56,7 @@ function getDaemonToken() {
 // Get detailed token status for debugging
 function getTokenStatus() {
   const configDir = join(homedir(), '.figma-ds-cli');
-  const tokenPath = DAEMON_TOKEN_FILE;
+  const tokenPath = MAHORAGA_TOKEN_FILE;
   const status = {
     configDir,
     tokenPath,
@@ -77,12 +79,12 @@ function getTokenStatus() {
   return status;
 }
 
-// Check if daemon is running (returns object with details, or false)
-function isDaemonRunning(returnDetails = false) {
+// Check if mahoraga is running (returns object with details, or false)
+function isMahoragaRunning(returnDetails = false) {
   try {
-    const token = getDaemonToken();
-    const tokenHeader = token ? ` -H "X-Daemon-Token: ${token}"` : '';
-    const response = execSync(`curl -s -o ${nullDevice} -w "%{http_code}"${tokenHeader} http://localhost:${DAEMON_PORT}/health`, {
+    const token = getMahoragaToken();
+    const tokenHeader = token ? ` -H "X-Mahoraga-Token: ${token}"` : '';
+    const response = execSync(`curl -s -o ${nullDevice} -w "%{http_code}"${tokenHeader} http://localhost:${MAHORAGA_PORT}/health`, {
       encoding: 'utf8',
       stdio: 'pipe',
       timeout: 1000
@@ -103,16 +105,16 @@ function isDaemonRunning(returnDetails = false) {
       return {
         running: false,
         error: e.message,
-        hasToken: !!getDaemonToken()
+        hasToken: !!getMahoragaToken()
       };
     }
     return false;
   }
 }
 
-// Send command to daemon (uses native fetch in Node 18+)
-async function daemonExec(action, data = {}, timeoutMs = 90000) {
-  const token = getDaemonToken();
+// Send command to mahoraga (uses native fetch in Node 18+)
+async function mahoragaExec(action, data = {}, timeoutMs = 90000) {
+  const token = getMahoragaToken();
   const headers = { 'Content-Type': 'application/json' };
 
   // Fail fast with clear error if token is missing
@@ -120,20 +122,20 @@ async function daemonExec(action, data = {}, timeoutMs = 90000) {
     const status = getTokenStatus();
     if (!status.tokenFileExists) {
       throw new Error(
-        `Daemon token not found at ${DAEMON_TOKEN_FILE}\n` +
-        `Run "node src/index.js connect" to start the daemon and generate a token.`
+        `Mahoraga token not found at ${MAHORAGA_TOKEN_FILE}\n` +
+        `Run "node src/index.js connect" to start the mahoraga and generate a token.`
       );
     }
     throw new Error(
-      `Failed to read daemon token from ${DAEMON_TOKEN_FILE}\n` +
+      `Failed to read mahoraga token from ${MAHORAGA_TOKEN_FILE}\n` +
       `${status.readError || 'Unknown error'}`
     );
   }
 
-  headers['X-Daemon-Token'] = token;
+  headers['X-Mahoraga-Token'] = token;
 
   try {
-    const response = await fetch(`http://localhost:${DAEMON_PORT}/exec`, {
+    const response = await fetch(`http://localhost:${MAHORAGA_PORT}/exec`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ action, ...data }),
@@ -142,7 +144,7 @@ async function daemonExec(action, data = {}, timeoutMs = 90000) {
 
     if (!response.ok) {
       const text = await response.text();
-      // Try to parse as JSON error from daemon
+      // Try to parse as JSON error from mahoraga
       try {
         const errObj = JSON.parse(text);
         if (errObj.error) {
@@ -150,8 +152,8 @@ async function daemonExec(action, data = {}, timeoutMs = 90000) {
           if (errObj.error.includes('Unauthorized') || errObj.error.includes('token')) {
             throw new Error(
               `${errObj.error}\n` +
-              `Token file: ${DAEMON_TOKEN_FILE}\n` +
-              `Try: node src/index.js daemon restart`
+              `Token file: ${MAHORAGA_TOKEN_FILE}\n` +
+              `Try: node src/index.js mahoraga restart`
             );
           }
           // Clean up error: remove stack trace line numbers for cleaner output
@@ -177,12 +179,12 @@ async function daemonExec(action, data = {}, timeoutMs = 90000) {
   }
 }
 
-// Fast eval via daemon (falls back to direct connection)
+// Fast eval via mahoraga (falls back to direct connection)
 async function fastEval(code) {
-  // Try daemon first
-  if (isDaemonRunning()) {
+  // Try mahoraga first
+  if (isMahoragaRunning()) {
     try {
-      return await daemonExec('eval', { code });
+      return await mahoragaExec('eval', { code });
     } catch (e) {
       // Continue to fallback
     }
@@ -193,12 +195,12 @@ async function fastEval(code) {
   return await client.eval(code);
 }
 
-// Fast render via daemon (falls back to direct connection)
+// Fast render via mahoraga (falls back to direct connection)
 async function fastRender(jsx) {
-  // Try daemon first
-  if (isDaemonRunning()) {
+  // Try mahoraga first
+  if (isMahoragaRunning()) {
     try {
-      return await daemonExec('render', { jsx });
+      return await mahoragaExec('render', { jsx });
     } catch (e) {
       // Continue to fallback
     }
@@ -224,49 +226,49 @@ function runFigmaUse(cmd, options = {}) {
   }
 }
 
-// Start daemon in background
-function startDaemon(forceRestart = false, mode = 'auto') {
-  // If force restart, always kill existing daemon first
+// Start mahoraga in background
+function startMahoraga(forceRestart = false, mode = 'auto') {
+  // If force restart, always kill existing mahoraga first
   if (forceRestart) {
-    stopDaemon();
+    stopMahoraga();
     sleepAfterStop();
 
     // Double-check port is free
     try {
-      killPort(DAEMON_PORT);
+      killPort(MAHORAGA_PORT);
     } catch {}
-  } else if (isDaemonRunning()) {
+  } else if (isMahoragaRunning()) {
     return true; // Already running
   }
 
-  // Generate session token before spawning daemon
-  const newToken = generateDaemonToken();
+  // Generate session token before spawning mahoraga
+  const newToken = generateMahoragaToken();
 
-  const daemonScript = join(dirname(fileURLToPath(import.meta.url)), 'daemon.js');
-  const child = spawn('node', [daemonScript], {
+  const mahoragaScript = join(dirname(fileURLToPath(import.meta.url)), 'mahoraga.js');
+  const child = spawn('node', [mahoragaScript], {
     detached: true,
     stdio: 'ignore',
-    env: { ...process.env, DAEMON_PORT: String(DAEMON_PORT), DAEMON_MODE: mode }
+    env: { ...process.env, MAHORAGA_PORT: String(MAHORAGA_PORT), MAHORAGA_MODE: mode }
   });
   child.unref();
 
   // Save PID
-  writeFileSync(DAEMON_PID_FILE, String(child.pid));
+  writeFileSync(MAHORAGA_PID_FILE, String(child.pid));
   return true;
 }
 
-// Stop daemon
-function stopDaemon() {
+// Stop mahoraga
+function stopMahoraga() {
   try {
-    if (existsSync(DAEMON_PID_FILE)) {
-      const pid = readFileSync(DAEMON_PID_FILE, 'utf8').trim();
+    if (existsSync(MAHORAGA_PID_FILE)) {
+      const pid = readFileSync(MAHORAGA_PID_FILE, 'utf8').trim();
       try {
         process.kill(parseInt(pid), 'SIGTERM');
       } catch {}
-      unlinkSync(DAEMON_PID_FILE);
+      unlinkSync(MAHORAGA_PID_FILE);
     }
     // Also try to kill by port
-    try { killPort(DAEMON_PORT); } catch {}
+    try { killPort(MAHORAGA_PORT); } catch {}
   } catch {}
 }
 
@@ -340,11 +342,11 @@ async function figmaEval(code) {
   return await client.eval(code);
 }
 
-// Sync wrapper for figmaEval - uses daemon via curl (fast) or fallback to direct connection
+// Sync wrapper for figmaEval - uses mahoraga via curl (fast) or fallback to direct connection
 function figmaEvalSync(code) {
-  // Try daemon first (fast path)
-  const daemonRunning = isDaemonRunning();
-  if (daemonRunning) {
+  // Try mahoraga first (fast path)
+  const mahoragaRunning = isMahoragaRunning();
+  if (mahoragaRunning) {
     try {
       // Wrap code to ensure return value for plugin mode
       // CDP returns last expression automatically, plugin needs explicit return
@@ -355,15 +357,15 @@ function figmaEvalSync(code) {
       const payload = JSON.stringify({ action: 'eval', code: wrappedCode });
       const payloadFile = join(tmpdir(), `figma-payload-${Date.now()}.json`);
       writeFileSync(payloadFile, payload);
-      const daemonToken = getDaemonToken();
-      const tokenHeader = daemonToken ? ` -H "X-Daemon-Token: ${daemonToken}"` : '';
+      const mahoragaToken = getMahoragaToken();
+      const tokenHeader = mahoragaToken ? ` -H "X-Mahoraga-Token: ${mahoragaToken}"` : '';
       const result = execSync(
-        `curl -s -X POST http://127.0.0.1:${DAEMON_PORT}/exec -H "Content-Type: application/json"${tokenHeader} -d @"${payloadFile}"`,
+        `curl -s -X POST http://127.0.0.1:${MAHORAGA_PORT}/exec -H "Content-Type: application/json"${tokenHeader} -d @"${payloadFile}"`,
         { encoding: 'utf8', timeout: 60000 }
       );
       try { unlinkSync(payloadFile); } catch {}
       if (!result || result.trim() === '') {
-        throw new Error('Empty response from daemon');
+        throw new Error('Empty response from mahoraga');
       }
       const data = JSON.parse(result);
       if (data.error) throw new Error(data.error);
@@ -371,9 +373,9 @@ function figmaEvalSync(code) {
     } catch (e) {
       // Check if we're in Safe Mode (plugin only) - don't fall through to CDP
       try {
-        const healthToken = getDaemonToken();
-        const healthHeader = healthToken ? ` -H "X-Daemon-Token: ${healthToken}"` : '';
-        const healthRes = execSync(`curl -s${healthHeader} http://127.0.0.1:${DAEMON_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
+        const healthToken = getMahoragaToken();
+        const healthHeader = healthToken ? ` -H "X-Mahoraga-Token: ${healthToken}"` : '';
+        const healthRes = execSync(`curl -s${healthHeader} http://127.0.0.1:${MAHORAGA_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
         const health = JSON.parse(healthRes);
         if (health.plugin && !health.cdp) {
           // Safe Mode - re-throw the error, don't try CDP fallback
@@ -522,11 +524,11 @@ function figmaUse(args, options = {}) {
 
 // Helper: Check connection
 async function checkConnection() {
-  // First check daemon (works for both CDP and Plugin modes)
+  // First check mahoraga (works for both CDP and Plugin modes)
   try {
-    const connToken = getDaemonToken();
-    const connHeader = connToken ? ` -H "X-Daemon-Token: ${connToken}"` : '';
-    const health = execSync(`curl -s${connHeader} http://127.0.0.1:${DAEMON_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
+    const connToken = getMahoragaToken();
+    const connHeader = connToken ? ` -H "X-Mahoraga-Token: ${connToken}"` : '';
+    const health = execSync(`curl -s${connHeader} http://127.0.0.1:${MAHORAGA_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
     const data = JSON.parse(health);
     if (data.status === 'ok' && (data.plugin || data.cdp)) {
       return true;
@@ -547,11 +549,11 @@ async function checkConnection() {
 
 // Helper: Check connection (sync version for backwards compat)
 function checkConnectionSync() {
-  // First check daemon (works for both CDP and Plugin modes)
+  // First check mahoraga (works for both CDP and Plugin modes)
   try {
-    const syncToken = getDaemonToken();
-    const syncHeader = syncToken ? ` -H "X-Daemon-Token: ${syncToken}"` : '';
-    const health = execSync(`curl -s${syncHeader} http://127.0.0.1:${DAEMON_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
+    const syncToken = getMahoragaToken();
+    const syncHeader = syncToken ? ` -H "X-Mahoraga-Token: ${syncToken}"` : '';
+    const health = execSync(`curl -s${syncHeader} http://127.0.0.1:${MAHORAGA_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
     const data = JSON.parse(health);
     if (data.status === 'ok' && (data.plugin || data.cdp)) {
       return true;
@@ -1006,36 +1008,34 @@ program
   .action(async (options) => {
     // Fun welcome message
     console.log(chalk.hex('#FF6B35')('\n  ✨ Hey designer! ') + chalk.white("Don't be afraid of the terminal!"));
-    console.log(chalk.hex('#4ECDC4')('  🎨 Happy vibe coding! ') + chalk.gray('— Sil · ') + chalk.hex('#FF6B35')('intodesignsystems.com\n'));
-
     const config = loadConfig();
 
     // Safe Mode: Plugin-based connection (no patching, no CDP)
     if (options.safe) {
       console.log(chalk.hex('#4ECDC4')('  🔒 Safe Mode ') + chalk.gray('(plugin-based, no patching required)\n'));
 
-      // Stop any existing daemon
-      stopDaemon();
+      // Stop any existing mahoraga
+      stopMahoraga();
 
-      // Start daemon in plugin mode
-      const daemonSpinner = ora('Starting daemon in Safe Mode...').start();
+      // Start mahoraga in plugin mode
+      const mahoragaSpinner = ora('Starting mahoraga in Safe Mode...').start();
       try {
-        startDaemon(true, 'plugin');  // Force restart in plugin mode
+        startMahoraga(true, 'plugin');  // Force restart in plugin mode
         await new Promise(r => setTimeout(r, 1000));
-        if (isDaemonRunning()) {
-          daemonSpinner.succeed('Daemon running in Safe Mode');
+        if (isMahoragaRunning()) {
+          mahoragaSpinner.succeed('Mahoraga running in Safe Mode');
         } else {
-          daemonSpinner.fail('Daemon failed to start');
+          mahoragaSpinner.fail('Mahoraga failed to start');
           return;
         }
       } catch (e) {
-        daemonSpinner.fail('Daemon failed: ' + e.message);
+        mahoragaSpinner.fail('Mahoraga failed: ' + e.message);
         return;
       }
 
       // Show plugin setup instructions
       console.log(chalk.hex('#FF6B35')('\n  ┌─────────────────────────────────────────────────────┐'));
-      console.log(chalk.hex('#FF6B35')('  │') + chalk.white.bold('  Setup the FigCli plugin                           ') + chalk.hex('#FF6B35')('│'));
+      console.log(chalk.hex('#FF6B35')('  │') + chalk.white.bold('  Setup the FigIDE plugin                           ') + chalk.hex('#FF6B35')('│'));
       console.log(chalk.hex('#FF6B35')('  └─────────────────────────────────────────────────────┘\n'));
 
       console.log(chalk.white.bold('  ONE-TIME SETUP:\n'));
@@ -1045,7 +1045,7 @@ program
       console.log(chalk.cyan('  4. ') + chalk.white('Click ') + chalk.yellow('Open') + chalk.white(' — plugin is now installed!\n'));
 
       console.log(chalk.white.bold('  EACH SESSION:\n'));
-      console.log(chalk.cyan('  → ') + chalk.white('In Figma: ') + chalk.yellow('Plugins → Development → FigCli\n'));
+      console.log(chalk.cyan('  → ') + chalk.white('In Figma: ') + chalk.yellow('Plugins → Development → FigIDE\n'));
 
       console.log(chalk.gray('  💡 Tip: Right-click plugin → "Add to toolbar" for one-click access\n'));
 
@@ -1055,13 +1055,47 @@ program
       for (let i = 0; i < 30; i++) {  // Wait up to 30 seconds
         await new Promise(r => setTimeout(r, 1000));
         try {
-          const pluginToken = getDaemonToken();
-          const pluginHeader = pluginToken ? ` -H "X-Daemon-Token: ${pluginToken}"` : '';
-          const healthRes = execSync(`curl -s${pluginHeader} http://127.0.0.1:${DAEMON_PORT}/health`, { encoding: 'utf8' });
+          const pluginToken = getMahoragaToken();
+          const pluginHeader = pluginToken ? ` -H "X-Mahoraga-Token: ${pluginToken}"` : '';
+          const healthRes = execSync(`curl -s${pluginHeader} http://127.0.0.1:${MAHORAGA_PORT}/health`, { encoding: 'utf8' });
           const health = JSON.parse(healthRes);
           if (health.plugin) {
             pluginSpinner.succeed('Plugin connected!');
-            console.log(chalk.green('\n  ✓ Ready! Safe Mode active.\n'));
+            console.log('');
+
+            const wheelArt = [
+              '@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@',
+              '@@@@@@@@@@@@@@@@@@@@+   #@@@@@@@@@@@@@@@@@@@@',
+              '@@@@@@@@@@@@@@@@@@@@+   #@@@@@@@@@@@@@@@@@@@@',
+              '@@@@@@@@@@@   :@@@@@@@:@@@@@@@:  =@@@@@@@@@@@',
+              '@@@@@@@@@@@   :@@@*      .%@@@    @@@@@@@@@@@',
+              '@@@@@@@@@@@@@@@- :@@@@ @@@@=.=@@@@@@@@@@@@@@@',
+              '@@@@@@@@@@@@@@=-@.@@@@ @@@@-@ #@@@@@@@@@@@@@@',
+              '@@@@@@@@@@@@@+:@@@%:@@ @@:@@@@.@@@@@@@@@@@@@@',
+              '@@@@@@@   =@@ %@@@@@*   #@@@@@+.@@   :@@@@@@@',
+              '@@@@@@%    %% +%@%%%=   +#%@@@=.@#   .@@@@@@@',
+              '@@@@@@@@@@@@@-:@@@@:+@:@==@@@@.%@@@@@@@@@@@@@',
+              '@@@@@@@@@@@@@@:+@++@@@ @@@+*@=+@@@@@@@@@@@@@@',
+              '@@@@@@@@@@@@@@@= %@@@@ @@@@* *@@@@@@@@@@@@@@@',
+              '@@@@@@@@@@@.  :@@%:.-+ =-.-@@@.  #@@@@@@@@@@@',
+              '@@@@@@@@@@@    @@@@@@@.@@@@@@@    @@@@@@@@@@@',
+              '@@@@@@@@@@@@@@@@@@@@@: -@@@@@@@*%@@@@@@@@@@@@',
+              '@@@@@@@@@@@@@@@@@@@@:   *@@@@@@@@@@@@@@@@@@@@',
+              '@@@@@@@@@@@@@@@@@@@@@#=%@@@@@@@@@@@@@@@@@@@@@',
+              '@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@',
+            ];
+
+            const colorWheel = (line) => line.replace(/(@+)|([^@]+)/g, (m, ats, detail) =>
+              ats ? chalk.hex('#2a2a3e')(ats.replace(/@/g, '█')) : chalk.hex('#FF6B35').bold(detail)
+            );
+
+            for (const line of wheelArt) console.log('  ' + colorWheel(line));
+            console.log('');
+            console.log('               ' + chalk.hex('#FF6B35').bold('M A H O R A G A'));
+            console.log(chalk.gray('               The Adaptive Bridge'));
+            console.log('');
+            console.log(chalk.green.bold('            ✓ Safe Mode Active - Adapting'));
+            console.log('');
             pluginConnected = true;
             break;
           }
@@ -1118,8 +1152,8 @@ program
       }
     }
 
-    // Stop any existing daemon
-    stopDaemon();
+    // Stop any existing mahoraga
+    stopMahoraga();
 
     console.log(chalk.blue('Starting Figma...'));
     try {
@@ -1149,18 +1183,18 @@ program
       return;
     }
 
-    // Start daemon for fast commands (force restart to get fresh connection)
-    const daemonSpinner = ora('Starting speed daemon...').start();
+    // Start mahoraga for fast commands (force restart to get fresh connection)
+    const mahoragaSpinner = ora('Starting speed mahoraga...').start();
     try {
-      startDaemon(true, 'auto');  // Auto mode: uses plugin if connected, otherwise CDP
+      startMahoraga(true, 'auto');  // Auto mode: uses plugin if connected, otherwise CDP
       await new Promise(r => setTimeout(r, 1500));
-      if (isDaemonRunning()) {
-        daemonSpinner.succeed('Speed daemon running (commands are now 10x faster)');
+      if (isMahoragaRunning()) {
+        mahoragaSpinner.succeed('Speed mahoraga running (commands are now 10x faster)');
       } else {
-        daemonSpinner.warn('Daemon failed to start, commands will be slower');
+        mahoragaSpinner.warn('Mahoraga failed to start, commands will be slower');
       }
     } catch (e) {
-      daemonSpinner.warn('Daemon failed: ' + e.message);
+      mahoragaSpinner.warn('Mahoraga failed: ' + e.message);
     }
   });
 
@@ -1692,33 +1726,33 @@ return 'Renamed ' + renamed + ' nodes';
     console.log(chalk.green(result || `✓ Renamed nodes`));
   });
 
-// ============ DAEMON ============
+// ============ MAHORAGA ============
 
-const daemon = program
-  .command('daemon')
-  .description('Manage the speed daemon');
+const mahoraga = program
+  .command('mahoraga')
+  .description('Manage the speed mahoraga');
 
-daemon
+mahoraga
   .command('status')
-  .description('Check if daemon is running')
+  .description('Check if mahoraga is running')
   .option('--debug', 'Show detailed token and connection info')
   .action((options) => {
-    const details = isDaemonRunning(true);
+    const details = isMahoragaRunning(true);
     const tokenStatus = getTokenStatus();
 
     if (options.debug) {
-      console.log(chalk.bold('\nDaemon Status'));
+      console.log(chalk.bold('\nMahoraga Status'));
       console.log(chalk.gray('─'.repeat(50)));
 
       // Connection status
       if (details.running) {
-        console.log(chalk.green('✓ Daemon:    ') + 'Running on port ' + DAEMON_PORT);
+        console.log(chalk.green('✓ Mahoraga:    ') + 'Running on port ' + MAHORAGA_PORT);
       } else if (details.authFailed) {
-        console.log(chalk.red('✗ Daemon:    ') + 'Running but authentication failed (403)');
+        console.log(chalk.red('✗ Mahoraga:    ') + 'Running but authentication failed (403)');
       } else if (details.error) {
-        console.log(chalk.yellow('○ Daemon:    ') + 'Not responding');
+        console.log(chalk.yellow('○ Mahoraga:    ') + 'Not responding');
       } else {
-        console.log(chalk.yellow('○ Daemon:    ') + 'Not running');
+        console.log(chalk.yellow('○ Mahoraga:    ') + 'Not running');
       }
 
       // Token status
@@ -1739,8 +1773,8 @@ daemon
       if (details.authFailed) {
         console.log();
         console.log(chalk.yellow('⚠ Token mismatch detected'));
-        console.log(chalk.gray('  The daemon has a different token than the CLI.'));
-        console.log(chalk.gray('  Fix: ') + chalk.cyan('node src/index.js daemon restart'));
+        console.log(chalk.gray('  The mahoraga has a different token than the CLI.'));
+        console.log(chalk.gray('  Fix: ') + chalk.cyan('node src/index.js mahoraga restart'));
       } else if (!tokenStatus.tokenFileExists && !details.running) {
         console.log();
         console.log(chalk.yellow('⚠ No token file found'));
@@ -1751,96 +1785,96 @@ daemon
     } else {
       // Simple output
       if (details.running) {
-        console.log(chalk.green('✓ Daemon is running on port ' + DAEMON_PORT));
+        console.log(chalk.green('✓ Mahoraga is running on port ' + MAHORAGA_PORT));
       } else if (details.authFailed) {
-        console.log(chalk.red('✗ Daemon running but auth failed (token mismatch)'));
-        console.log(chalk.gray('  Fix: node src/index.js daemon restart'));
-        console.log(chalk.gray('  Debug: node src/index.js daemon status --debug'));
+        console.log(chalk.red('✗ Mahoraga running but auth failed (token mismatch)'));
+        console.log(chalk.gray('  Fix: node src/index.js mahoraga restart'));
+        console.log(chalk.gray('  Debug: node src/index.js mahoraga status --debug'));
       } else {
-        console.log(chalk.yellow('○ Daemon is not running'));
+        console.log(chalk.yellow('○ Mahoraga is not running'));
         console.log(chalk.gray('  Run "node src/index.js connect" to start it'));
       }
     }
   });
 
-daemon
+mahoraga
   .command('start')
-  .description('Start the daemon manually')
+  .description('Start the mahoraga manually')
   .option('--force', 'Force restart even if already running')
   .action(async (options) => {
-    const details = isDaemonRunning(true);
+    const details = isMahoragaRunning(true);
 
     if (details.running && !options.force) {
-      console.log(chalk.green('✓ Daemon already running'));
+      console.log(chalk.green('✓ Mahoraga already running'));
       return;
     }
 
     if (details.authFailed) {
-      console.log(chalk.yellow('⚠ Daemon running but auth failed, forcing restart...'));
+      console.log(chalk.yellow('⚠ Mahoraga running but auth failed, forcing restart...'));
       options.force = true;
     }
 
-    console.log(chalk.blue('Starting daemon...'));
-    startDaemon(options.force, 'auto');
+    console.log(chalk.blue('Starting mahoraga...'));
+    startMahoraga(options.force, 'auto');
     await new Promise(r => setTimeout(r, 1500));
 
-    const newDetails = isDaemonRunning(true);
+    const newDetails = isMahoragaRunning(true);
     if (newDetails.running) {
-      console.log(chalk.green('✓ Daemon started on port ' + DAEMON_PORT));
+      console.log(chalk.green('✓ Mahoraga started on port ' + MAHORAGA_PORT));
     } else if (newDetails.authFailed) {
-      console.log(chalk.red('✗ Daemon started but auth failed'));
-      console.log(chalk.gray('  Run: node src/index.js daemon diagnose'));
+      console.log(chalk.red('✗ Mahoraga started but auth failed'));
+      console.log(chalk.gray('  Run: node src/index.js mahoraga diagnose'));
     } else {
-      console.log(chalk.red('✗ Failed to start daemon'));
-      console.log(chalk.gray('  Run: node src/index.js daemon diagnose'));
+      console.log(chalk.red('✗ Failed to start mahoraga'));
+      console.log(chalk.gray('  Run: node src/index.js mahoraga diagnose'));
     }
   });
 
-daemon
+mahoraga
   .command('stop')
-  .description('Stop the daemon')
+  .description('Stop the mahoraga')
   .action(() => {
-    console.log(chalk.blue('Stopping daemon...'));
-    stopDaemon();
-    console.log(chalk.green('✓ Daemon stopped'));
+    console.log(chalk.blue('Stopping mahoraga...'));
+    stopMahoraga();
+    console.log(chalk.green('✓ Mahoraga stopped'));
   });
 
-daemon
+mahoraga
   .command('restart')
-  .description('Restart the daemon (regenerates token)')
+  .description('Restart the mahoraga (regenerates token)')
   .action(async () => {
-    console.log(chalk.blue('Restarting daemon...'));
+    console.log(chalk.blue('Restarting mahoraga...'));
     // Use forceRestart=true to ensure clean restart with new token
-    startDaemon(true, 'auto');
+    startMahoraga(true, 'auto');
     await new Promise(r => setTimeout(r, 1500));
 
-    const details = isDaemonRunning(true);
+    const details = isMahoragaRunning(true);
     if (details.running) {
-      console.log(chalk.green('✓ Daemon restarted with fresh token'));
+      console.log(chalk.green('✓ Mahoraga restarted with fresh token'));
     } else if (details.authFailed) {
-      console.log(chalk.red('✗ Daemon running but auth failed'));
-      console.log(chalk.gray('  Try: node src/index.js daemon diagnose'));
+      console.log(chalk.red('✗ Mahoraga running but auth failed'));
+      console.log(chalk.gray('  Try: node src/index.js mahoraga diagnose'));
     } else {
-      console.log(chalk.red('✗ Failed to restart daemon'));
-      console.log(chalk.gray('  Try: node src/index.js daemon diagnose'));
+      console.log(chalk.red('✗ Failed to restart mahoraga'));
+      console.log(chalk.gray('  Try: node src/index.js mahoraga diagnose'));
     }
   });
 
-daemon
+mahoraga
   .command('reconnect')
   .description('Reconnect to Figma (use if connection is stale)')
   .action(async () => {
-    if (!isDaemonRunning()) {
-      console.log(chalk.yellow('○ Daemon is not running'));
+    if (!isMahoragaRunning()) {
+      console.log(chalk.yellow('○ Mahoraga is not running'));
       console.log(chalk.gray('  Run "figma-ds-cli connect" first'));
       return;
     }
     console.log(chalk.blue('Reconnecting to Figma...'));
     try {
-      const reconnToken = getDaemonToken();
+      const reconnToken = getMahoragaToken();
       const reconnHeaders = {};
-      if (reconnToken) reconnHeaders['X-Daemon-Token'] = reconnToken;
-      const response = await fetch(`http://localhost:${DAEMON_PORT}/reconnect`, { headers: reconnHeaders });
+      if (reconnToken) reconnHeaders['X-Mahoraga-Token'] = reconnToken;
+      const response = await fetch(`http://localhost:${MAHORAGA_PORT}/reconnect`, { headers: reconnHeaders });
       const result = await response.json();
       if (result.error) {
         console.log(chalk.red('✗ Reconnect failed: ' + result.error));
@@ -1852,14 +1886,14 @@ daemon
     }
   });
 
-daemon
+mahoraga
   .command('diagnose')
-  .description('Diagnose daemon connection issues')
+  .description('Diagnose mahoraga connection issues')
   .action(async () => {
-    console.log(chalk.bold('\n🔍 Daemon Diagnostics\n'));
+    console.log(chalk.bold('\n🔍 Mahoraga Diagnostics\n'));
 
     const tokenStatus = getTokenStatus();
-    const details = isDaemonRunning(true);
+    const details = isMahoragaRunning(true);
 
     // Step 1: Check token file
     console.log(chalk.bold('1. Token File'));
@@ -1879,11 +1913,11 @@ daemon
 
     // Step 2: Check if port is in use
     console.log();
-    console.log(chalk.bold('2. Port ' + DAEMON_PORT));
+    console.log(chalk.bold('2. Port ' + MAHORAGA_PORT));
 
     let portPid = null;
     try {
-      portPid = getPortPid(DAEMON_PORT);
+      portPid = getPortPid(MAHORAGA_PORT);
     } catch {}
 
     if (portPid) {
@@ -1892,17 +1926,17 @@ daemon
       // Check if it matches our PID file
       let savedPid = null;
       try {
-        savedPid = readFileSync(DAEMON_PID_FILE, 'utf8').trim();
+        savedPid = readFileSync(MAHORAGA_PID_FILE, 'utf8').trim();
       } catch {}
 
       if (savedPid && savedPid === portPid) {
-        console.log(chalk.green('   ✓ PID matches saved daemon PID'));
+        console.log(chalk.green('   ✓ PID matches saved mahoraga PID'));
       } else if (savedPid) {
         console.log(chalk.yellow('   ⚠ PID mismatch! Saved: ' + savedPid + ', Actual: ' + portPid));
-        console.log(chalk.gray('     This may cause auth issues. Fix: "node src/index.js daemon restart"'));
+        console.log(chalk.gray('     This may cause auth issues. Fix: "node src/index.js mahoraga restart"'));
       }
     } else {
-      console.log(chalk.yellow('   ○ Port not in use (daemon not running)'));
+      console.log(chalk.yellow('   ○ Port not in use (mahoraga not running)'));
     }
 
     // Step 3: Test authentication
@@ -1910,12 +1944,12 @@ daemon
     console.log(chalk.bold('3. Authentication'));
 
     if (!details.running && !details.authFailed) {
-      console.log(chalk.yellow('   ○ Daemon not responding, cannot test auth'));
+      console.log(chalk.yellow('   ○ Mahoraga not responding, cannot test auth'));
     } else if (details.authFailed) {
       console.log(chalk.red('   ✗ Auth failed (403 Unauthorized)'));
-      console.log(chalk.gray('     The daemon has a different token than the CLI.'));
-      console.log(chalk.gray('     This happens when the daemon was started with an old token.'));
-      console.log(chalk.gray('     Fix: "node src/index.js daemon restart"'));
+      console.log(chalk.gray('     The mahoraga has a different token than the CLI.'));
+      console.log(chalk.gray('     This happens when the mahoraga was started with an old token.'));
+      console.log(chalk.gray('     Fix: "node src/index.js mahoraga restart"'));
     } else if (details.running) {
       console.log(chalk.green('   ✓ Authentication successful'));
     }
@@ -1926,7 +1960,7 @@ daemon
 
     if (details.running) {
       try {
-        const result = await daemonExec('eval', { code: 'return "pong"' }, 5000);
+        const result = await mahoragaExec('eval', { code: 'return "pong"' }, 5000);
         if (result === 'pong') {
           console.log(chalk.green('   ✓ Eval working: ping → pong'));
         } else {
@@ -1936,7 +1970,7 @@ daemon
         console.log(chalk.red('   ✗ Eval failed: ' + e.message.split('\n')[0]));
       }
     } else {
-      console.log(chalk.yellow('   ○ Skipped (daemon not running)'));
+      console.log(chalk.yellow('   ○ Skipped (mahoraga not running)'));
     }
 
     // Summary
@@ -1944,13 +1978,13 @@ daemon
     console.log(chalk.gray('─'.repeat(50)));
 
     if (details.running) {
-      console.log(chalk.green('✓ Daemon is healthy'));
+      console.log(chalk.green('✓ Mahoraga is healthy'));
     } else if (details.authFailed) {
-      console.log(chalk.red('✗ Token mismatch - run: node src/index.js daemon restart'));
+      console.log(chalk.red('✗ Token mismatch - run: node src/index.js mahoraga restart'));
     } else if (!tokenStatus.tokenFileExists) {
       console.log(chalk.red('✗ No token - run: node src/index.js connect'));
     } else {
-      console.log(chalk.yellow('○ Daemon not running - run: node src/index.js connect'));
+      console.log(chalk.yellow('○ Mahoraga not running - run: node src/index.js connect'));
     }
 
     console.log();
@@ -2941,7 +2975,7 @@ figma.currentPage.selection = [frame];
 return '${name} created at (' + smartX + ', ${options.y})';
 })()
 `;
-    const result = await daemonExec('eval', { code });
+    const result = await mahoragaExec('eval', { code });
     console.log(result);
   });
 
@@ -2979,7 +3013,7 @@ create
 
       spinner.text = 'Creating in Figma...';
 
-      // Create SVG in Figma via daemon
+      // Create SVG in Figma via mahoraga
       const posX = options.x !== undefined ? parseInt(options.x) : null;
       const posY = parseInt(options.y) || 0;
       const spacing = parseInt(options.spacing) || 100;
@@ -3024,7 +3058,7 @@ create
   return { id: finalNode.id, x: finalNode.x, y: finalNode.y, width: finalNode.width, height: finalNode.height };
 })()`;
 
-      const result = await daemonExec('eval', { code });
+      const result = await mahoragaExec('eval', { code });
       spinner.succeed(`Created icon: ${name}`);
       console.log(chalk.gray(`  Position: (${result.x}, ${result.y}), Size: ${result.width}x${result.height}px`));
     } catch (error) {
@@ -3619,7 +3653,7 @@ ${[...fonts].map(f => {
   return "Recreated ${data.elements.length} elements from ${url}";
 })()`;
 
-      // Step 3: Execute via daemon (fast) or direct connection (fallback)
+      // Step 3: Execute via mahoraga (fast) or direct connection (fallback)
       spinner.text = 'Creating in Figma...';
       await fastEval(figmaCode);
 
@@ -3823,7 +3857,7 @@ figma.currentPage.selection = [rect];
 return '${rectName} created at (' + smartX + ', ${options.y})';
 })()
 `;
-    const result = await daemonExec('eval', { code });
+    const result = await mahoragaExec('eval', { code });
     console.log(result);
   });
 
@@ -3862,7 +3896,7 @@ figma.currentPage.selection = [ellipse];
 return '${ellipseName} created at (' + smartX + ', ${options.y})';
 })()
 `;
-    const result = await daemonExec('eval', { code });
+    const result = await mahoragaExec('eval', { code });
     console.log(result);
   });
 
@@ -3903,7 +3937,7 @@ create
   return 'Text created at (' + smartX + ', ${options.y})';
 })()
 `;
-    const result = await daemonExec('eval', { code });
+    const result = await mahoragaExec('eval', { code });
     console.log(result);
   });
 
@@ -3940,7 +3974,7 @@ figma.currentPage.selection = [line];
 return 'Line created at (' + smartX + ', ${options.y1}) with length ${lineLength}';
 })()
 `;
-    const result = await daemonExec('eval', { code });
+    const result = await mahoragaExec('eval', { code });
     console.log(result);
   });
 
@@ -4031,7 +4065,7 @@ figma.currentPage.selection = [frame];
 return 'Auto-layout frame created at (' + smartX + ', ${options.y})';
 })()
 `;
-    const result = await daemonExec('eval', { code });
+    const result = await mahoragaExec('eval', { code });
     console.log(result);
   });
 
@@ -4473,7 +4507,7 @@ set
         nodes.forEach(n => { if ('fills' in n) n.fills = [boundFill(variable)]; });
         return 'Bound ' + variable.name + ' to fill on ' + nodes.length + ' elements';
       })()`;
-      const result = await daemonExec('eval', { code });
+      const result = await mahoragaExec('eval', { code });
       console.log(chalk.green('✓ ' + (result || 'Done')));
     } else {
       // Hex color
@@ -4519,7 +4553,7 @@ set
         nodes.forEach(n => { if ('strokes' in n) { n.strokes = [boundFill(variable)]; n.strokeWeight = ${options.weight}; } });
         return 'Bound ' + variable.name + ' to stroke on ' + nodes.length + ' elements';
       })()`;
-      const result = await daemonExec('eval', { code });
+      const result = await mahoragaExec('eval', { code });
       console.log(chalk.green('✓ ' + (result || 'Done')));
     } else {
       // Hex color
@@ -4891,8 +4925,8 @@ async function applyPostProcessFixes(nodeId, fixes) {
   })()`;
 
   try {
-    if (isDaemonRunning()) {
-      await daemonExec('eval', { code });
+    if (isMahoragaRunning()) {
+      await mahoragaExec('eval', { code });
     } else {
       figmaEvalSync(code);
     }
@@ -4901,7 +4935,7 @@ async function applyPostProcessFixes(nodeId, fixes) {
   }
 }
 
-// Fast JSX parser for simple frames (daemon-based, 4x faster)
+// Fast JSX parser for simple frames (mahoraga-based, 4x faster)
 function parseSimpleJsx(jsx) {
   // Only handles single Frame element, no nesting
   const frameMatch = jsx.match(/^<Frame\s+([^>]+)\s*\/?>(?:<\/Frame>)?$/);
@@ -4962,7 +4996,7 @@ program
   .option('-x <n>', 'X position')
   .option('-y <n>', 'Y position')
   .option('--no-smart-position', 'Disable auto-positioning')
-  .option('--fast', 'Use fast daemon-based rendering (simple frames only)')
+  .option('--fast', 'Use fast mahoraga-based rendering (simple frames only)')
   .action(async (rawJsx, options) => {
     const jsx = unescapeShell(rawJsx);
     await checkConnection();
@@ -4982,7 +5016,7 @@ program
         const { FigmaClient } = await import('./figma-client.js');
         const client = new FigmaClient();
         const code = await client.parseJSX(jsx);
-        const result = await daemonExec('eval', { code });
+        const result = await mahoragaExec('eval', { code });
         if (result && result.id) {
           console.log(chalk.green('✓ Rendered: ' + result.id));
           if (result.name) console.log(chalk.gray('  name: ' + result.name));
@@ -4993,9 +5027,9 @@ program
       // Try fast path for simple frames
       if (options.fast || (!jsx.includes('><') && !jsx.includes('</Frame><'))) {
         const simpleProps = parseSimpleJsx(jsx.trim());
-        if (simpleProps && isDaemonRunning()) {
+        if (simpleProps && isMahoragaRunning()) {
           const code = generateFigmaCode(simpleProps, posX || 0, posY);
-          const result = await daemonExec('eval', { code });
+          const result = await mahoragaExec('eval', { code });
           if (result && result.id) {
             console.log(chalk.green('✓ Rendered: ' + result.id));
             if (result.name) console.log(chalk.gray('  name: ' + result.name));
@@ -5008,19 +5042,19 @@ program
       const postProcessFixes = extractPostProcessFixes(jsx);
 
       // Check if we're in Safe Mode (plugin only, no CDP)
-      let useDaemonRender = false;
+      let useMahoragaRender = false;
       try {
-        const healthToken = getDaemonToken();
-        const healthHeader = healthToken ? ` -H "X-Daemon-Token: ${healthToken}"` : '';
-        const healthRes = execSync(`curl -s${healthHeader} http://127.0.0.1:${DAEMON_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
+        const healthToken = getMahoragaToken();
+        const healthHeader = healthToken ? ` -H "X-Mahoraga-Token: ${healthToken}"` : '';
+        const healthRes = execSync(`curl -s${healthHeader} http://127.0.0.1:${MAHORAGA_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
         const health = JSON.parse(healthRes);
-        useDaemonRender = health.plugin && !health.cdp; // Safe Mode
+        useMahoragaRender = health.plugin && !health.cdp; // Safe Mode
       } catch {}
 
       let result;
-      if (useDaemonRender) {
-        // Safe Mode: use daemon render (works via plugin)
-        result = await daemonExec('render', { jsx });
+      if (useMahoragaRender) {
+        // Safe Mode: use mahoraga render (works via plugin)
+        result = await mahoragaExec('render', { jsx });
         // Position the frame after creation
         if (result && result.id && (posX !== undefined || posY !== undefined)) {
           await fastEval(`(async () => {
@@ -5029,19 +5063,40 @@ program
           })()`);
         }
       } else {
-        // Yolo Mode: use figma-use (full JSX support, faster)
-        let cmd = 'figma-use render --stdin --json';
-        if (options.parent) cmd += ` --parent "${options.parent}"`;
-        if (posX !== undefined) cmd += ` --x ${posX}`;
-        cmd += ` --y ${posY}`;
+        // Yolo Mode: use figma-use if available, otherwise fall back to CDP renderer
+        let figmaUseAvailable = false;
+        try {
+          execSync('which figma-use 2>/dev/null || where figma-use 2>nul', { encoding: 'utf8', timeout: 2000 });
+          figmaUseAvailable = true;
+        } catch {}
 
-        const output = execSync(cmd, {
-          input: jsx,
-          encoding: 'utf8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-          timeout: 60000
-        });
-        result = JSON.parse(output.trim());
+        if (figmaUseAvailable) {
+          let cmd = 'figma-use render --stdin --json';
+          if (options.parent) cmd += ` --parent "${options.parent}"`;
+          if (posX !== undefined) cmd += ` --x ${posX}`;
+          cmd += ` --y ${posY}`;
+
+          const output = execSync(cmd, {
+            input: jsx,
+            encoding: 'utf8',
+            stdio: ['pipe', 'pipe', 'pipe'],
+            timeout: 60000
+          });
+          result = JSON.parse(output.trim());
+        } else {
+          // Fallback: use CDP-based JSX renderer (same as var:/Slot/Icon path)
+          const { FigmaClient } = await import('./figma-client.js');
+          const client = new FigmaClient();
+          const code = await client.parseJSX(jsx);
+          result = await mahoragaExec('eval', { code });
+          // Apply position after creation
+          if (result && result.id && (posX !== undefined || posY !== undefined)) {
+            await fastEval(`(async () => {
+              const n = await figma.getNodeByIdAsync("${result.id}");
+              if (n) { ${posX !== undefined ? `n.x = ${posX};` : ''} n.y = ${posY}; }
+            })()`);
+          }
+        }
       }
 
       console.log(chalk.green('✓ Rendered: ' + result.id));
@@ -5088,8 +5143,8 @@ program
       const gap = parseInt(options.gap) || 40;
       const vertical = options.direction === 'col' || options.direction === 'column' || options.direction === 'vertical';
 
-      // Single daemon call for ALL frames (10x faster)
-      const results = await daemonExec('render-batch', {
+      // Single mahoraga call for ALL frames (10x faster)
+      const results = await mahoragaExec('render-batch', {
         jsxArray,
         gap,
         vertical
@@ -5165,11 +5220,11 @@ program
       console.log(chalk.gray('  → Run: node src/index.js connect'));
     }
 
-    // 6. Daemon status
-    if (isDaemonRunning()) {
-      console.log(chalk.green('✓ Daemon running on port 3456'));
+    // 6. Mahoraga status
+    if (isMahoragaRunning()) {
+      console.log(chalk.green('✓ Mahoraga running on port 3456'));
     } else {
-      console.log(chalk.yellow('○ Daemon not running (optional, speeds up commands)'));
+      console.log(chalk.yellow('○ Mahoraga not running (optional, speeds up commands)'));
     }
 
     // 7. figma-use availability
@@ -5431,24 +5486,24 @@ program
       return;
     }
 
-    // Always prefer async daemon (more reliable, no shell timeout issues)
-    if (isDaemonRunning()) {
+    // Always prefer async mahoraga (more reliable, no shell timeout issues)
+    if (isMahoragaRunning()) {
       try {
-        const result = await daemonExec('eval', { code: jsCode });
+        const result = await mahoragaExec('eval', { code: jsCode });
         if (result !== undefined && result !== null) {
           console.log(typeof result === 'object' ? JSON.stringify(result, null, 2) : result);
         }
         return;
       } catch (e) {
-        // Check if this is a connection/daemon error vs user code error
+        // Check if this is a connection/mahoraga error vs user code error
         const isConnectionError = e.message.includes('ECONNREFUSED') ||
                                   e.message.includes('fetch failed') ||
                                   e.message.includes('network') ||
                                   e.message.includes('timeout') ||
                                   e.message.includes('disconnected');
         if (isConnectionError) {
-          // Connection/daemon error - fall back to sync path
-          console.log(chalk.yellow('⚠ Daemon error, trying sync path...'));
+          // Connection/mahoraga error - fall back to sync path
+          console.log(chalk.yellow('⚠ Mahoraga error, trying sync path...'));
         } else {
           // User code error - display directly, don't fall back
           console.log(chalk.red('✗ ' + e.message));
@@ -5457,7 +5512,7 @@ program
       }
     }
 
-    // Sync fallback (when daemon not running)
+    // Sync fallback (when mahoraga not running)
     try {
       const result = figmaEvalSync(jsCode);
       if (result !== undefined && result !== null) {
@@ -5480,9 +5535,9 @@ program
     }
     const code = readFileSync(file, 'utf8');
     try {
-      // Use async daemon path for better performance with long scripts
-      if (isDaemonRunning()) {
-        const result = await daemonExec('eval', { code });
+      // Use async mahoraga path for better performance with long scripts
+      if (isMahoragaRunning()) {
+        const result = await mahoragaExec('eval', { code });
         if (result !== undefined) {
           console.log(typeof result === 'object' ? JSON.stringify(result, null, 2) : result);
         }
@@ -5510,9 +5565,9 @@ program
 // Helper: Check if Safe Mode (plugin only)
 async function isInSafeMode() {
   try {
-    const healthToken = getDaemonToken();
-    const healthHeader = healthToken ? ` -H "X-Daemon-Token: ${healthToken}"` : '';
-    const healthRes = execSync(`curl -s${healthHeader} http://127.0.0.1:${DAEMON_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
+    const healthToken = getMahoragaToken();
+    const healthHeader = healthToken ? ` -H "X-Mahoraga-Token: ${healthToken}"` : '';
+    const healthRes = execSync(`curl -s${healthHeader} http://127.0.0.1:${MAHORAGA_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
     const health = JSON.parse(healthRes);
     return health.plugin && !health.cdp;
   } catch {
@@ -6772,16 +6827,16 @@ node
     await checkConnection();
 
     // Check if we're in Safe Mode (plugin only, no CDP)
-    let useDaemon = false;
+    let useMahoraga = false;
     try {
-      const healthToken = getDaemonToken();
-      const healthHeader = healthToken ? ` -H "X-Daemon-Token: ${healthToken}"` : '';
-      const healthRes = execSync(`curl -s${healthHeader} http://127.0.0.1:${DAEMON_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
+      const healthToken = getMahoragaToken();
+      const healthHeader = healthToken ? ` -H "X-Mahoraga-Token: ${healthToken}"` : '';
+      const healthRes = execSync(`curl -s${healthHeader} http://127.0.0.1:${MAHORAGA_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
       const health = JSON.parse(healthRes);
-      useDaemon = health.plugin && !health.cdp;
+      useMahoraga = health.plugin && !health.cdp;
     } catch {}
 
-    if (useDaemon) {
+    if (useMahoraga) {
       // Safe Mode: use native Figma API
       const code = `(async () => {
         const ids = ${JSON.stringify(nodeIds)};
@@ -6817,16 +6872,16 @@ node
     await checkConnection();
 
     // Check if we're in Safe Mode
-    let useDaemon = false;
+    let useMahoraga = false;
     try {
-      const healthToken = getDaemonToken();
-      const healthHeader = healthToken ? ` -H "X-Daemon-Token: ${healthToken}"` : '';
-      const healthRes = execSync(`curl -s${healthHeader} http://127.0.0.1:${DAEMON_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
+      const healthToken = getMahoragaToken();
+      const healthHeader = healthToken ? ` -H "X-Mahoraga-Token: ${healthToken}"` : '';
+      const healthRes = execSync(`curl -s${healthHeader} http://127.0.0.1:${MAHORAGA_PORT}/health`, { encoding: 'utf8', timeout: 2000 });
       const health = JSON.parse(healthRes);
-      useDaemon = health.plugin && !health.cdp;
+      useMahoraga = health.plugin && !health.cdp;
     } catch {}
 
-    if (useDaemon) {
+    if (useMahoraga) {
       // Safe Mode: use native Figma API
       const code = `(async () => {
         const ids = ${JSON.stringify(nodeIds)};
@@ -8283,20 +8338,20 @@ blocksCmd
           // Calculate smart position
           let posX = 0;
           try {
-            const canvasInfo = await daemonExec('eval', {
+            const canvasInfo = await mahoragaExec('eval', {
               code: 'var nodes = figma.currentPage.children; var maxX = 0; for (var i = 0; i < nodes.length; i++) { var right = nodes[i].x + nodes[i].width; if (right > maxX) maxX = right; } return maxX;'
             });
             if (typeof canvasInfo === 'number' && canvasInfo > 0) posX = canvasInfo + 100;
           } catch (e) { /* use 0 */ }
 
-          const result = await daemonExec('render', { jsx, x: posX, y: 0 }, 120000);
+          const result = await mahoragaExec('render', { jsx, x: posX, y: 0 }, 120000);
           return result;
         },
 
         // Eval code from a file path
         evalFile: async (filePath) => {
           const code = readFileSync(filePath, 'utf8');
-          return await daemonExec('eval', { code }, 120000);
+          return await mahoragaExec('eval', { code }, 120000);
         },
 
         // Write temp file and return path
@@ -8313,6 +8368,235 @@ blocksCmd
       spinner.succeed(`Created ${block.name} (${nodeId})`);
     } catch (e) {
       spinner.fail(`Failed to create ${block.name}: ${e.message}`);
+    }
+  });
+
+// ============ DROP ============
+
+const dropCmd = program
+  .command('drop')
+  .description('Drop a component onto the canvas by name');
+
+dropCmd
+  .command('list')
+  .description('List all available drops')
+  .option('-c, --category <category>', 'Filter by category (e.g., android, ios, web, custom)')
+  .action((options) => {
+    const drops = listDrops(options.category);
+    if (drops.length === 0) {
+      console.log(chalk.yellow('No drops available' + (options.category ? ` in category "${options.category}"` : '') + '.'));
+      return;
+    }
+    const categories = getDropCategories();
+    console.log(chalk.bold('\nAvailable Drops:\n'));
+    for (const cat of categories) {
+      if (options.category && cat !== options.category) continue;
+      const catDrops = drops.filter(d => d.category === cat);
+      if (catDrops.length === 0) continue;
+      console.log(chalk.hex('#FF6B35').bold(`  ${cat.toUpperCase()}`));
+      for (const d of catDrops) {
+        const typeTag = d.type === 'library' ? chalk.blue('[lib]') : chalk.gray('[tpl]');
+        console.log(`    ${chalk.cyan(d.id.padEnd(28))} ${typeTag} ${d.description}`);
+      }
+      console.log('');
+    }
+    console.log(`Usage: ${chalk.green('node src/index.js drop in <name>')}\n`);
+  });
+
+dropCmd
+  .command('categories')
+  .description('List drop categories')
+  .action(() => {
+    const cats = getDropCategories();
+    console.log(chalk.bold('\nDrop Categories:\n'));
+    for (const c of cats) {
+      const count = listDrops(c).length;
+      console.log(`  ${chalk.cyan(c.padEnd(20))} ${count} component${count !== 1 ? 's' : ''}`);
+    }
+    console.log('');
+  });
+
+dropCmd
+  .command('save <name...>')
+  .description('Save the selected Figma element as a reusable drop')
+  .option('-c, --category <category>', 'Category (default: saved)')
+  .option('-d, --description <desc>', 'Description of the component')
+  .option('-a, --alias <aliases>', 'Comma-separated aliases')
+  .action(async (nameParts, options) => {
+    const name = nameParts.join(' ');
+    const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+    if (findDrop(id)) {
+      console.log(chalk.yellow(`⚠ Drop "${id}" already exists. It will be overwritten.`));
+    }
+
+    await checkConnection();
+    const spinner = ora('Capturing selection from Figma...').start();
+
+    try {
+      const script = buildSerializerScript();
+      const raw = await mahoragaExec('eval', { code: script }, 30000);
+
+      let tree;
+      if (typeof raw === 'string') {
+        tree = JSON.parse(raw);
+      } else {
+        tree = raw;
+      }
+
+      if (tree.error) {
+        spinner.fail(tree.error);
+        return;
+      }
+
+      if (!tree.type || !tree.name) {
+        spinner.fail('Could not read node data. Make sure a frame is selected.');
+        return;
+      }
+
+      spinner.text = 'Saving drop...';
+
+      const aliases = options.alias ? options.alias.split(',').map(a => a.trim()) : [];
+      const count = saveDrop({
+        id,
+        name,
+        aliases,
+        category: options.category || 'saved',
+        description: options.description || `Saved from Figma: ${tree.name}`,
+        tree,
+      });
+
+      spinner.succeed(
+        `Saved "${chalk.cyan(name)}" as a drop! (${count} saved drop${count !== 1 ? 's' : ''} total)`
+      );
+      console.log(`  Recreate anytime: ${chalk.green(`node src/index.js drop in ${id}`)}`);
+
+      // Spin the Mahoraga wheel in the plugin UI
+      try { await mahoragaExec('wheel-spin', {}, 5000); } catch {}
+    } catch (e) {
+      spinner.fail(`Failed to save: ${e.message}`);
+    }
+  });
+
+dropCmd
+  .command('in <name...>')
+  .description('Drop a component onto the canvas')
+  .action(async (nameParts) => {
+    const name = nameParts.join(' ');
+    const drop = findDrop(name);
+    if (!drop) {
+      console.log(chalk.red(`✗ Drop "${name}" not found.`));
+      console.log(`Run ${chalk.cyan('node src/index.js drop list')} to see available drops.`);
+      return;
+    }
+
+    await checkConnection();
+    const spinner = ora(`Dropping ${drop.name}...`).start();
+
+    try {
+      if (drop.type === 'library') {
+        const code = `
+          (async () => {
+            const component = await figma.importComponentByKeyAsync("${drop.componentKey}");
+            const instance = component.createInstance();
+            figma.currentPage.appendChild(instance);
+            figma.viewport.scrollAndZoomIntoView([instance]);
+            return { id: instance.id, name: instance.name };
+          })()
+        `;
+        const result = await mahoragaExec('eval', { code }, 30000);
+        spinner.succeed(`Dropped ${drop.name} (${result?.id || 'done'})`);
+      } else {
+        const code = drop.create();
+        const result = await mahoragaExec('eval', { code }, 60000);
+        spinner.succeed(`Dropped ${drop.name} (${result?.id || 'done'})`);
+      }
+    } catch (e) {
+      spinner.fail(`Failed to drop ${drop.name}: ${e.message}`);
+    }
+  });
+
+dropCmd
+  .command('remove <name...>')
+  .description('Remove a saved drop')
+  .action((nameParts) => {
+    const name = nameParts.join(' ');
+    const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+    try {
+      const savedPath = new URL('./drops/saved.json', import.meta.url);
+      const entries = JSON.parse(readFileSync(savedPath, 'utf8'));
+      const idx = entries.findIndex(e => e.id === id || e.name.toLowerCase() === name.toLowerCase());
+
+      if (idx < 0) {
+        console.log(chalk.yellow(`Drop "${name}" not found in saved drops.`));
+        return;
+      }
+
+      const removed = entries.splice(idx, 1)[0];
+      writeFileSync(savedPath, JSON.stringify(entries, null, 2) + '\n');
+      console.log(chalk.green(`✓ Removed "${removed.name}" from saved drops.`));
+    } catch (e) {
+      console.log(chalk.red(`Failed to remove: ${e.message}`));
+    }
+  });
+
+dropCmd
+  .command('icon <name>')
+  .description('Drop an Iconify icon onto the canvas (e.g., mdi:star, lucide:heart, ph:rocket)')
+  .option('-s, --size <px>', 'Icon size in pixels', '24')
+  .option('-c, --color <hex>', 'Icon color as hex (e.g., #ff0000)', '#000000')
+  .action(async (name, options) => {
+    const size = parseInt(options.size) || 24;
+    const hex = options.color.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+    await checkConnection();
+    const spinner = ora(`Fetching icon ${name}...`).start();
+
+    try {
+      const [prefix, icon] = name.includes(':') ? name.split(':') : ['mdi', name];
+      const url = `https://api.iconify.design/${prefix}/${icon}.svg?width=${size}&height=${size}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+
+      if (!res.ok) {
+        spinner.fail(`Icon "${name}" not found on Iconify (${res.status})`);
+        return;
+      }
+
+      const svg = await res.text();
+      if (!svg.includes('<svg')) {
+        spinner.fail(`Invalid SVG response for "${name}"`);
+        return;
+      }
+
+      spinner.text = `Dropping ${name}...`;
+
+      const code = `(async () => {
+        const svgStr = ${JSON.stringify(svg)};
+        const node = figma.createNodeFromSvg(svgStr);
+        node.name = "${prefix}:${icon}";
+        node.resize(${size}, ${size});
+        try {
+          const recolor = (n) => {
+            if ('fills' in n && n.fills.length > 0) {
+              n.fills = [{ type: "SOLID", color: { r: ${r}, g: ${g}, b: ${b} } }];
+            }
+            if ('children' in n) n.children.forEach(recolor);
+          };
+          recolor(node);
+        } catch(e) {}
+        figma.currentPage.appendChild(node);
+        figma.viewport.scrollAndZoomIntoView([node]);
+        return { id: node.id, name: node.name };
+      })()`;
+
+      const result = await mahoragaExec('eval', { code }, 15000);
+      spinner.succeed(`Dropped icon ${chalk.cyan(name)} (${size}px) ${result?.id || ''}`);
+    } catch (e) {
+      spinner.fail(`Failed to drop icon: ${e.message}`);
     }
   });
 

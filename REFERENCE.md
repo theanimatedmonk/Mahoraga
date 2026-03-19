@@ -254,20 +254,51 @@ node src/index.js fj eval "figma.currentPage.children.length"
 
 Shape types: `ROUNDED_RECTANGLE`, `RECTANGLE`, `ELLIPSE`, `DIAMOND`, `TRIANGLE_UP`, `TRIANGLE_DOWN`, `PARALLELOGRAM_RIGHT`, `PARALLELOGRAM_LEFT`
 
-## Daemon & Connection
+## Drop — Component Drop-in
 
 ```bash
-node src/index.js connect                  # Connect (Yolo Mode)
-node src/index.js connect --safe           # Connect (Safe Mode, plugin)
-node src/index.js daemon status            # Check daemon status
-node src/index.js daemon status --debug    # Detailed token & connection info
-node src/index.js daemon diagnose          # Full diagnostic (troubleshooting)
-node src/index.js daemon start             # Start daemon manually
-node src/index.js daemon start --force     # Force restart
-node src/index.js daemon restart           # Restart with fresh token
-node src/index.js daemon stop              # Stop daemon
-node src/index.js daemon reconnect         # Reconnect to Figma
-node src/index.js files                    # List open Figma files (JSON)
+node src/index.js drop list                    # List all available drops
+node src/index.js drop list -c android         # Filter by category
+node src/index.js drop categories              # List categories
+node src/index.js drop in <name>               # Drop component onto canvas
+node src/index.js drop in android bottom-sheet # Example: bottom sheet
+node src/index.js drop in fab                  # Example: FAB (alias)
+node src/index.js drop in top app bar          # Example: top app bar
+```
+
+### Save & Reuse (self-growing library)
+
+Select any frame in Figma, then:
+```bash
+node src/index.js drop save "My Card"                     # Save selection as a drop
+node src/index.js drop save "Nav Bar" -c navigation       # Save with category
+node src/index.js drop save "Header" -a "hero,banner"     # Save with aliases
+node src/index.js drop remove my-card                     # Remove a saved drop
+```
+
+Saved drops are stored in `src/drops/saved.json` and auto-loaded alongside built-in drops.
+
+Drop types:
+- `template` — built from code (self-contained, no dependencies)
+- `saved` — user-saved from Figma selection (stored in saved.json)
+- `library` — imports from a published Figma team library by component key
+
+Registry: `src/drops/index.js` (built-in) + `src/drops/saved.json` (user-saved)
+
+## Mahoraga & Connection
+
+```bash
+node src/index.js connect                    # Connect (Yolo Mode)
+node src/index.js connect --safe             # Connect (Safe Mode, plugin)
+node src/index.js mahoraga status            # Check mahoraga status
+node src/index.js mahoraga status --debug    # Detailed token & connection info
+node src/index.js mahoraga diagnose          # Full diagnostic (troubleshooting)
+node src/index.js mahoraga start             # Start mahoraga manually
+node src/index.js mahoraga start --force     # Force restart
+node src/index.js mahoraga restart           # Restart with fresh token
+node src/index.js mahoraga stop              # Stop mahoraga
+node src/index.js mahoraga reconnect         # Reconnect to Figma
+node src/index.js files                      # List open Figma files (JSON)
 ```
 
 ### Troubleshooting Auth Errors
@@ -275,11 +306,11 @@ node src/index.js files                    # List open Figma files (JSON)
 If you see "Unauthorized: Invalid or missing token":
 
 ```bash
-node src/index.js daemon diagnose          # See what's wrong
-node src/index.js daemon restart           # Usually fixes it
+node src/index.js mahoraga diagnose          # See what's wrong
+node src/index.js mahoraga restart           # Usually fixes it
 ```
 
-Token file location: `~/.figma-ds-cli/.daemon-token`
+Token file location: `~/.figma-ds-cli/.mahoraga-token`
 
 ## Component Combinations (combos)
 
@@ -421,7 +452,7 @@ Safe Mode uses a plugin-based connection instead of CDP (Chrome DevTools Protoco
 node src/index.js connect --safe
 ```
 
-Then in Figma: Plugins → Development → FigCli
+Then in Figma: Plugins → Development → FigIDE
 
 ### Differences from Yolo Mode
 
@@ -438,8 +469,8 @@ All commands work in both modes. In Safe Mode, commands use native Figma API ins
 
 | Command | Yolo Mode | Safe Mode |
 |---------|-----------|-----------|
-| `render` | figma-use | daemon (native API) |
-| `render-batch` | figma-use | daemon (native API) |
+| `render` | figma-use | mahoraga (native API) |
+| `render-batch` | figma-use | mahoraga (native API) |
 | `node to-component` | figma-use | native API |
 | `node delete` | figma-use | native API |
 | `node tree` | figma-use | native API |
@@ -448,7 +479,7 @@ All commands work in both modes. In Safe Mode, commands use native Figma API ins
 | `analyze colors/typography/spacing/clusters` | figma-use | native API |
 | `export-jsx` | figma-use | native API |
 | `export-storybook` | figma-use | native API |
-| All other commands | daemon | daemon |
+| All other commands | mahoraga | mahoraga |
 
 ### Tips for Safe Mode
 
