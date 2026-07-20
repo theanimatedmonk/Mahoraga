@@ -1,6 +1,5 @@
 ---
-description: Figma CLI - Control Figma Desktop via shell commands using Chrome DevTools Protocol
-globs:
+description: 
 alwaysApply: true
 ---
 
@@ -15,7 +14,7 @@ All commands start with: `node src/index.js` (run from the figma-cli project roo
 ## Quick Reference
 
 | User says | Command |
-|-----------|---------|
+|-----|---|
 | "connect to figma" | `node src/index.js connect` |
 | "connect safe mode" | `node src/index.js connect --safe` |
 | "add shadcn colors" | `node src/index.js tokens preset shadcn` |
@@ -35,7 +34,7 @@ All commands start with: `node src/index.js` (run from the figma-cli project roo
 node src/index.js connect          # Yolo Mode (patches Figma, direct CDP)
 node src/index.js connect --safe   # Safe Mode (plugin bridge, no patching)
 node src/index.js status           # Check connection
-node src/index.js mahoraga status   # Check mahoraga
+node src/index.js bridge status     # Check Mahoraga bridge
 ```
 
 ## Dropping Components

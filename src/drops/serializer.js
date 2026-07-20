@@ -240,6 +240,75 @@ export function buildSerializerScript() {
 })()`;
 }
 
+/**
+ * Same tree serializer as buildSerializerScript(), but exports every top-level selected node
+ * plus metadata for codegen (React, etc.). Written by `export selection`.
+ */
+export function buildCodegenSelectionExportScript() {
+  return buildSerializerScript().replace(
+    `  return JSON.stringify(await ser(sel[0], 0));
+})()`,
+    `  const nodes = [];
+  for (let i = 0; i < sel.length; i++) {
+    const t = await ser(sel[i], 0);
+    if (t) nodes.push(t);
+  }
+  const out = {
+    schemaVersion: 1,
+    exportedBy: "mahoraga",
+    file: figma.root.name,
+    page: figma.currentPage.name,
+    selectionCount: sel.length,
+    exportedAt: new Date().toISOString(),
+    nodes,
+  };
+  return JSON.stringify(out);
+})()`
+  );
+}
+
+/** Capture all bound variables on the selection tree (every key in node.boundVariables). */
+export function buildVariableBindingsCaptureScript() {
+  return `(async () => {
+  const sel = figma.currentPage.selection;
+  if (!sel.length) return JSON.stringify({ error: "Nothing selected" });
+  const bindings = [];
+  const inspect = async (n, pathParts) => {
+    const currentPath = [...pathParts, n.name];
+    const pathStr = currentPath.join(" > ");
+    const bv = n.boundVariables;
+    if (bv && typeof bv === "object") {
+      for (const key of Object.keys(bv)) {
+        const val = bv[key];
+        if (val == null) continue;
+        if (Array.isArray(val)) {
+          for (let i = 0; i < val.length; i++) {
+            const alias = val[i];
+            if (alias && typeof alias === "object" && alias.id) {
+              const v = await figma.variables.getVariableByIdAsync(alias.id);
+              if (v) bindings.push({ path: pathStr, property: key + "[" + i + "]", variable: v.name });
+            }
+          }
+        } else if (typeof val === "object" && val.id) {
+          const v = await figma.variables.getVariableByIdAsync(val.id);
+          if (v) bindings.push({ path: pathStr, property: key, variable: v.name });
+        }
+      }
+    }
+    if ("children" in n) {
+      for (const child of n.children) await inspect(child, currentPath);
+    }
+  };
+  await inspect(sel[0], []);
+  let basePersona = null;
+  for (const b of bindings) {
+    const m = b.variable.match(/^persona-card\\/([^/]+)\\//);
+    if (m) { basePersona = m[1]; break; }
+  }
+  return JSON.stringify({ bindings, basePersona });
+})()`;
+}
+
 
 // ── Code Generator (runs in Node.js) ────────────────────────────────
 
@@ -277,7 +346,7 @@ function buildStrokeLiteral(s) {
   return null;
 }
 
-export function generateDropCode(tree) {
+export function generateDropCode(tree, options = {}) {
   const fonts = new Set();
 
   function collectFonts(node) {
@@ -565,6 +634,64 @@ export function generateDropCode(tree) {
   const rootVar = emit(tree, null, '  ', false);
   code += `\n  figma.currentPage.appendChild(${rootVar});\n`;
   code += `  figma.viewport.scrollAndZoomIntoView([${rootVar}]);\n`;
+
+  const binds = options.variableBindings;
+  if (binds && binds.length > 0) {
+    const bindsJson = JSON.stringify(binds);
+    code += `
+  const __binds = ${bindsJson};
+  const __getVar = async (fullName) => {
+    const cols = await figma.variables.getLocalVariableCollectionsAsync();
+    for (const col of cols) {
+      for (const vid of col.variableIds) {
+        const vv = await figma.variables.getVariableByIdAsync(vid);
+        if (vv && vv.name === fullName) return vv;
+      }
+    }
+    return null;
+  };
+  const __nodeByPath = (root, pathStr) => {
+    const parts = pathStr.split(" > ").map((s) => s.trim());
+    if (root.name !== parts[0]) return null;
+    let cur = root;
+    for (let i = 1; i < parts.length; i++) {
+      const ch = cur.children && cur.children.find((c) => c.name === parts[i]);
+      if (!ch) return null;
+      cur = ch;
+    }
+    return cur;
+  };
+  for (const b of __binds) {
+    const node = __nodeByPath(${rootVar}, b.path);
+    if (!node) continue;
+    const variable = await __getVar(b.variable);
+    if (!variable) continue;
+    if (b.property === "characters" && node.type === "TEXT") {
+      try { node.setBoundVariable("characters", variable); } catch (e) {}
+      continue;
+    }
+    const m = b.property.match(/^(fills|strokes|effects)\\[(\\d+)\\]$/);
+    if (m) {
+      const prop = m[1];
+      const idx = parseInt(m[2], 10);
+      if (prop === "effects") {
+        const arr = JSON.parse(JSON.stringify(node.effects));
+        if (arr[idx]) arr[idx] = figma.variables.setBoundVariableForEffect(arr[idx], "color", variable);
+        node.effects = arr;
+      } else {
+        const arr = JSON.parse(JSON.stringify(node[prop]));
+        if (arr[idx]) arr[idx] = figma.variables.setBoundVariableForPaint(arr[idx], "color", variable);
+        node[prop] = arr;
+      }
+      continue;
+    }
+    try {
+      node.setBoundVariable(b.property, variable);
+    } catch (e) {}
+  }
+`;
+  }
+
   code += `  return { id: ${rootVar}.id, name: ${rootVar}.name };\n`;
   code += '})()';
 
@@ -585,14 +712,24 @@ export function loadSavedDrops() {
       category: entry.category || 'saved',
       description: entry.description || 'Saved component',
       type: 'template',
-      create: () => generateDropCode(entry.tree),
+      create: () =>
+        generateDropCode(entry.tree, { variableBindings: entry.variableBindings || [] }),
     }));
   } catch {
     return [];
   }
 }
 
-export function saveDrop({ id, name, aliases, category, description, tree }) {
+export function saveDrop({
+  id,
+  name,
+  aliases,
+  category,
+  description,
+  tree,
+  variableBindings,
+  basePersona,
+}) {
   let entries = [];
   try {
     entries = JSON.parse(readFileSync(SAVED_PATH, 'utf8'));
@@ -600,6 +737,8 @@ export function saveDrop({ id, name, aliases, category, description, tree }) {
 
   const existing = entries.findIndex(e => e.id === id);
   const entry = { id, name, aliases: aliases || [], category: category || 'saved', description: description || '', tree };
+  if (variableBindings && variableBindings.length > 0) entry.variableBindings = variableBindings;
+  if (basePersona) entry.basePersona = basePersona;
 
   if (existing >= 0) {
     entries[existing] = entry;

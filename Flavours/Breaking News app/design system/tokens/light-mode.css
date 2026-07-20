@@ -1,0 +1,11 @@
+/* Breaking News Launcher — Light mode tokens */
+/* Extracted from Figma section: ✅  ・ Final design v2.0 (June 16, 2026) */
+:root {
+  --bnl-background: #f5f5f5;
+  --bnl-surface: #ffffff;
+  --bnl-surface-alt: #f1f1f3;
+  --bnl-text-primary: #1a1a1a;
+  --bnl-text-secondary: #666666;
+  --bnl-border: #e0e0e0;
+  --bnl-accent: #ec0400;
+}

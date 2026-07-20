@@ -1,0 +1,202 @@
+{
+  "section": "✅  ・ Final design v2.0 (June 16, 2026)",
+  "sectionId": "6622:22005",
+  "exportedAt": "2026-07-20T12:04:07.110Z",
+  "screens": [
+    {
+      "id": "7570:12310",
+      "name": "Top Stories section",
+      "file": "top-stories-section_7570-12310.png"
+    },
+    {
+      "id": "7570:13257",
+      "name": "Top Stories section",
+      "file": "top-stories-section_7570-13257.png"
+    },
+    {
+      "id": "6622:22401",
+      "name": "city selection",
+      "file": "city-selection_6622-22401.png"
+    },
+    {
+      "id": "6984:2119",
+      "name": "location permission",
+      "file": "location-permission_6984-2119.png"
+    },
+    {
+      "id": "6984:5102",
+      "name": "location permission",
+      "file": "location-permission_6984-5102.png"
+    },
+    {
+      "id": "6984:6104",
+      "name": "location permission",
+      "file": "location-permission_6984-6104.png"
+    },
+    {
+      "id": "6984:6536",
+      "name": "location permission",
+      "file": "location-permission_6984-6536.png"
+    },
+    {
+      "id": "6984:5575",
+      "name": "location permission",
+      "file": "location-permission_6984-5575.png"
+    },
+    {
+      "id": "7523:1597",
+      "name": "location permission",
+      "file": "location-permission_7523-1597.png"
+    },
+    {
+      "id": "6984:3029",
+      "name": "location permission",
+      "file": "location-permission_6984-3029.png"
+    },
+    {
+      "id": "6984:3922",
+      "name": "city selection",
+      "file": "city-selection_6984-3922.png"
+    },
+    {
+      "id": "6622:23233",
+      "name": "Top Stories section",
+      "file": "top-stories-section_6622-23233.png"
+    },
+    {
+      "id": "6663:29317",
+      "name": "city",
+      "file": "city_6663-29317.png"
+    },
+    {
+      "id": "6667:30385",
+      "name": "city",
+      "file": "city_6667-30385.png"
+    },
+    {
+      "id": "6716:33309",
+      "name": "city",
+      "file": "city_6716-33309.png"
+    },
+    {
+      "id": "6667:31944",
+      "name": "city",
+      "file": "city_6667-31944.png"
+    },
+    {
+      "id": "6667:32225",
+      "name": "city",
+      "file": "city_6667-32225.png"
+    },
+    {
+      "id": "6667:31029",
+      "name": "city",
+      "file": "city_6667-31029.png"
+    },
+    {
+      "id": "6622:23498",
+      "name": "city selection",
+      "file": "city-selection_6622-23498.png"
+    },
+    {
+      "id": "6622:23942",
+      "name": "Hamburger menu",
+      "file": "hamburger-menu_6622-23942.png"
+    },
+    {
+      "id": "6622:24283",
+      "name": "Top Stories section",
+      "file": "top-stories-section_6622-24283.png"
+    },
+    {
+      "id": "6622:24534",
+      "name": "Top Stories section",
+      "file": "top-stories-section_6622-24534.png"
+    },
+    {
+      "id": "6663:29582",
+      "name": "Top Stories section",
+      "file": "top-stories-section_6663-29582.png"
+    },
+    {
+      "id": "6716:33963",
+      "name": "Top Stories section",
+      "file": "top-stories-section_6716-33963.png"
+    },
+    {
+      "id": "6622:25646",
+      "name": "Top Stories section",
+      "file": "top-stories-section_6622-25646.png"
+    },
+    {
+      "id": "6622:26558",
+      "name": "Top Stories section",
+      "file": "top-stories-section_6622-26558.png"
+    },
+    {
+      "id": "6622:27029",
+      "name": "Top Stories section",
+      "file": "top-stories-section_6622-27029.png"
+    },
+    {
+      "id": "6622:27309",
+      "name": "Top Stories section",
+      "file": "top-stories-section_6622-27309.png"
+    },
+    {
+      "id": "6622:27632",
+      "name": "Following",
+      "file": "following_6622-27632.png"
+    },
+    {
+      "id": "7138:1145",
+      "name": "Following",
+      "file": "following_7138-1145.png"
+    },
+    {
+      "id": "6622:27672",
+      "name": "Following",
+      "file": "following_6622-27672.png"
+    },
+    {
+      "id": "7523:2931",
+      "name": "Following",
+      "file": "following_7523-2931.png"
+    },
+    {
+      "id": "6900:2604",
+      "name": "Following",
+      "file": "following_6900-2604.png"
+    },
+    {
+      "id": "6787:35379",
+      "name": "city selection",
+      "file": "city-selection_6787-35379.png"
+    },
+    {
+      "id": "6900:678",
+      "name": "Top Stories section",
+      "file": "top-stories-section_6900-678.png"
+    },
+    {
+      "id": "6900:1940",
+      "name": "Top Stories section",
+      "file": "top-stories-section_6900-1940.png"
+    },
+    {
+      "id": "6989:7534",
+      "name": "Top Stories section",
+      "file": "top-stories-section_6989-7534.png"
+    },
+    {
+      "id": "7523:2041",
+      "name": "Top Stories section",
+      "file": "top-stories-section_7523-2041.png"
+    },
+    {
+      "id": "7525:1104",
+      "name": "app info",
+      "file": "app-info_7525-1104.png"
+    }
+  ]
+}

@@ -1,12 +1,12 @@
 {
-  "name": "figma-ds-cli",
-  "version": "1.1.1",
-  "description": "CLI for managing Figma design systems. Create variables, components, and more. No API key required.",
+  "name": "@deanimatedmonk/mahoraga",
+  "version": "1.2.0",
+  "description": "CLI for managing Figma design systems (CDP + Mahoraga bridge). Create variables, components, and more. No API key required.",
   "author": "Sil Bormüller",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "figma-ds-cli": "src/index.js",
+    "mahoraga": "src/index.js",
     "fig-start": "bin/fig-start"
   },
   "files": [
@@ -30,7 +30,18 @@
   },
   "scripts": {
     "setup-alias": "bash bin/setup-alias.sh",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "generate-topic-images": "node scripts/generate-topic-images.mjs --target 372x205 --provider openai",
+    "generate-topic-images:dry": "node scripts/generate-topic-images.mjs --target 372x205 --provider openai --dry-run",
+    "generate-topic-images:gemini": "node scripts/generate-topic-images.mjs --target 372x205 --provider gemini --model nano-banana",
+    "generate-topic-images:gemini:dry": "node scripts/generate-topic-images.mjs --target 372x205 --provider gemini --model nano-banana --dry-run",
+    "emit-topic-prompts": "node scripts/emit-topic-image-prompts.mjs",
+    "generate-topic-svgs": "node scripts/generate-topic-svgs.mjs",
+    "rename-topics-lm": "node scripts/build-rename-topics-lm-eval.mjs && node src/index.js eval --file scripts/.generated-rename-topics-lm.js",
+    "rename-topics-dm": "node scripts/build-rename-topics-dm-eval.mjs && node src/index.js eval --file scripts/.generated-rename-topics-dm.js",
+    "rename-persona-profile-picture": "node scripts/build-rename-persona-profile-picture-eval.mjs && node src/index.js eval --file scripts/.generated-rename-persona-profile-picture.js",
+    "rename-persona-bg": "node scripts/build-rename-persona-bg-eval.mjs && node src/index.js eval --file scripts/.generated-rename-persona-bg.js",
+    "export-selection": "node src/index.js export selection"
   },
   "engines": {
     "node": ">=18"
@@ -40,5 +51,8 @@
     "commander": "^12.0.0",
     "ora": "^8.0.0",
     "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5"
   }
 }

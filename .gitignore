@@ -5,3 +5,15 @@ node_modules/
 .figma-client-*.mjs
 screenshot.png
 nul
+
+# Generated topic icons (remove if you want PNGs in git)
+assets/topic-images/*.png
+assets/topic-icons/*.svg
+
+# Regenerated: node scripts/drop-20-persona-cards.mjs
+scripts/.generated-drop-20-persona.js
+scripts/.generated-rename-persona-cards.js
+scripts/.generated-rename-topics-lm.js
+scripts/.generated-rename-topics-dm.js
+scripts/.generated-rename-persona-profile-picture.js
+scripts/.generated-rename-persona-bg.js

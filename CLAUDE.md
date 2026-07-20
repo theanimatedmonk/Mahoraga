@@ -1,4 +1,4 @@
-# figma-ds-cli
+# mahoraga (Figma CLI)
 
 CLI that controls Figma Desktop directly. No API key needed.
 
@@ -792,6 +792,6 @@ Drop registry:
 `connect` auto-starts Mahoraga for 10x faster commands.
 
 ```bash
-node src/index.js mahoraga status
-node src/index.js mahoraga restart
+node src/index.js bridge status
+node src/index.js bridge restart
 ```

@@ -17,7 +17,12 @@ import { isPatched, patchFigma, unpatchFigma, getFigmaCommand, getCdpPort, getFi
 import { listComponents, getComponent, getAllComponents, VISUAL_COMPONENTS } from './shadcn.js';
 import { listBlocks, getBlock } from './blocks/index.js';
 import { listDrops, findDrop, getDropCategories, DROPS } from './drops/index.js';
-import { buildSerializerScript, saveDrop } from './drops/serializer.js';
+import {
+  buildSerializerScript,
+  buildCodegenSelectionExportScript,
+  buildVariableBindingsCaptureScript,
+  saveDrop,
+} from './drops/serializer.js';
 import {
   nullDevice, killPort, getPortPid, sleepAfterStop,
   startFigmaApp, killFigmaApp,
@@ -30,32 +35,45 @@ function unescapeShell(str) {
   return str.replace(/\\!/g, '!');
 }
 
-// Mahoraga configuration
+// Mahoraga configuration (127.0.0.1 avoids Node fetch resolving localhost → IPv6 when only IPv4 listens)
+const MAHORAGA_HOST = '127.0.0.1';
 const MAHORAGA_PORT = 3456;
 const MAHORAGA_PID_FILE = join(homedir(), '.figma-cli-mahoraga.pid');
-const MAHORAGA_TOKEN_FILE = join(homedir(), '.figma-ds-cli', '.mahoraga-token');
+/** Config + token live under ~/.mahoraga (legacy: ~/.figma-ds-cli) */
+const CONFIG_DIR = join(homedir(), '.mahoraga');
+const LEGACY_CONFIG_DIR = join(homedir(), '.figma-ds-cli');
+const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
+const MAHORAGA_TOKEN_FILE = join(CONFIG_DIR, '.mahoraga-token');
+const LEGACY_MAHORAGA_TOKEN_FILE = join(LEGACY_CONFIG_DIR, '.mahoraga-token');
 
 // Generate and save a new session token for mahoraga authentication
 function generateMahoragaToken() {
-  const configDir = join(homedir(), '.figma-ds-cli');
-  if (!existsSync(configDir)) mkdirSync(configDir, { recursive: true });
+  if (!existsSync(CONFIG_DIR)) mkdirSync(CONFIG_DIR, { recursive: true });
   const token = randomBytes(32).toString('hex');
   writeFileSync(MAHORAGA_TOKEN_FILE, token, { mode: 0o600 });
   return token;
 }
 
-// Read the current mahoraga session token
+// Read the current mahoraga session token (migrates from ~/.figma-ds-cli once)
 function getMahoragaToken() {
   try {
     return readFileSync(MAHORAGA_TOKEN_FILE, 'utf8').trim();
   } catch {
-    return null;
+    try {
+      if (!existsSync(LEGACY_MAHORAGA_TOKEN_FILE)) return null;
+      const t = readFileSync(LEGACY_MAHORAGA_TOKEN_FILE, 'utf8').trim();
+      if (!existsSync(CONFIG_DIR)) mkdirSync(CONFIG_DIR, { recursive: true });
+      writeFileSync(MAHORAGA_TOKEN_FILE, t, { mode: 0o600 });
+      return t;
+    } catch {
+      return null;
+    }
   }
 }
 
 // Get detailed token status for debugging
 function getTokenStatus() {
-  const configDir = join(homedir(), '.figma-ds-cli');
+  const configDir = CONFIG_DIR;
   const tokenPath = MAHORAGA_TOKEN_FILE;
   const status = {
     configDir,
@@ -135,7 +153,7 @@ async function mahoragaExec(action, data = {}, timeoutMs = 90000) {
   headers['X-Mahoraga-Token'] = token;
 
   try {
-    const response = await fetch(`http://localhost:${MAHORAGA_PORT}/exec`, {
+    const response = await fetch(`http://${MAHORAGA_HOST}:${MAHORAGA_PORT}/exec`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ action, ...data }),
@@ -153,7 +171,7 @@ async function mahoragaExec(action, data = {}, timeoutMs = 90000) {
             throw new Error(
               `${errObj.error}\n` +
               `Token file: ${MAHORAGA_TOKEN_FILE}\n` +
-              `Try: node src/index.js mahoraga restart`
+              `Try: mahoraga bridge restart`
             );
           }
           // Clean up error: remove stack trace line numbers for cleaner output
@@ -174,6 +192,17 @@ async function mahoragaExec(action, data = {}, timeoutMs = 90000) {
   } catch (e) {
     if (e.name === 'TimeoutError' || e.message.includes('timeout')) {
       throw new Error(`Execution timeout (${timeoutMs/1000}s). Try reconnecting: node src/index.js connect`);
+    }
+    const low = String(e.message || '').toLowerCase();
+    const refused =
+      low === 'fetch failed' ||
+      low.includes('econnrefused') ||
+      (e.cause && e.cause.code === 'ECONNREFUSED');
+    if (refused || (e.name === 'TypeError' && low.includes('fetch'))) {
+      throw new Error(
+        `Cannot reach Mahoraga at http://${MAHORAGA_HOST}:${MAHORAGA_PORT} (${e.message || 'connection refused'}).\n` +
+          `Start it and keep FigIDE open: ${chalk.cyan('node src/index.js connect --safe')}`
+      );
     }
     throw e;
   }
@@ -297,9 +326,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
 
-const CONFIG_DIR = join(homedir(), '.figma-ds-cli');
-const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
-
 const program = new Command();
 
 // Helper: Prompt user
@@ -308,13 +334,16 @@ function prompt(question) {
   return new Promise(resolve => rl.question(question, answer => { rl.close(); resolve(answer); }));
 }
 
-// Helper: Load config
+// Helper: Load config (reads ~/.mahoraga/config.json, then legacy ~/.figma-ds-cli/config.json)
 function loadConfig() {
-  try {
-    if (existsSync(CONFIG_FILE)) {
-      return JSON.parse(readFileSync(CONFIG_FILE, 'utf8'));
-    }
-  } catch {}
+  const paths = [CONFIG_FILE, join(LEGACY_CONFIG_DIR, 'config.json')];
+  for (const p of paths) {
+    try {
+      if (existsSync(p)) {
+        return JSON.parse(readFileSync(p, 'utf8'));
+      }
+    } catch {}
+  }
   return {};
 }
 
@@ -540,8 +569,8 @@ async function checkConnection() {
   if (!connected) {
     console.log(chalk.red('\n✗ Not connected to Figma\n'));
     console.log(chalk.white('  Make sure Figma is running:'));
-    console.log(chalk.cyan('  figma-ds-cli connect') + chalk.gray(' (Yolo Mode)'));
-    console.log(chalk.cyan('  figma-ds-cli connect --safe') + chalk.gray(' (Safe Mode)\n'));
+    console.log(chalk.cyan('  mahoraga connect') + chalk.gray(' (Yolo Mode)'));
+    console.log(chalk.cyan('  mahoraga connect --safe') + chalk.gray(' (Safe Mode)\n'));
     process.exit(1);
   }
   return true;
@@ -568,8 +597,8 @@ function checkConnectionSync() {
   } catch {
     console.log(chalk.red('\n✗ Not connected to Figma\n'));
     console.log(chalk.white('  Make sure Figma is running:'));
-    console.log(chalk.cyan('  figma-ds-cli connect') + chalk.gray(' (Yolo Mode)'));
-    console.log(chalk.cyan('  figma-ds-cli connect --safe') + chalk.gray(' (Safe Mode)\n'));
+    console.log(chalk.cyan('  mahoraga connect') + chalk.gray(' (Yolo Mode)'));
+    console.log(chalk.cyan('  mahoraga connect --safe') + chalk.gray(' (Safe Mode)\n'));
     process.exit(1);
   }
 }
@@ -676,7 +705,7 @@ if (children.length > 0) {
 }
 
 program
-  .name('figma-ds-cli')
+  .name('mahoraga')
   .description('CLI for managing Figma design systems')
   .version(pkg.version);
 
@@ -943,7 +972,7 @@ program
   .description('Setup Figma for CLI access (alias for init)')
   .action(() => {
     // Redirect to init
-    execSync('figma-ds-cli init', { stdio: 'inherit' });
+    execSync('mahoraga init', { stdio: 'inherit' });
   });
 
 // ============ STATUS ============
@@ -956,7 +985,7 @@ program
     const config = loadConfig();
     if (!config.patched && !checkDependencies(true)) {
       console.log(chalk.yellow('\n⚠ First time? Run the setup wizard:\n'));
-      console.log(chalk.cyan('  figma-ds-cli init\n'));
+      console.log(chalk.cyan('  mahoraga init\n'));
       return;
     }
     figmaUse('status');
@@ -1726,13 +1755,13 @@ return 'Renamed ' + renamed + ' nodes';
     console.log(chalk.green(result || `✓ Renamed nodes`));
   });
 
-// ============ MAHORAGA ============
+// ============ MAHORAGA BRIDGE (subcommand: bridge — CLI binary is `mahoraga`) ============
 
-const mahoraga = program
-  .command('mahoraga')
-  .description('Manage the speed mahoraga');
+const bridgeCmd = program
+  .command('bridge')
+  .description('Manage the Mahoraga bridge server (WebSocket + HTTP exec)');
 
-mahoraga
+bridgeCmd
   .command('status')
   .description('Check if mahoraga is running')
   .option('--debug', 'Show detailed token and connection info')
@@ -1774,7 +1803,7 @@ mahoraga
         console.log();
         console.log(chalk.yellow('⚠ Token mismatch detected'));
         console.log(chalk.gray('  The mahoraga has a different token than the CLI.'));
-        console.log(chalk.gray('  Fix: ') + chalk.cyan('node src/index.js mahoraga restart'));
+        console.log(chalk.gray('  Fix: ') + chalk.cyan('mahoraga bridge restart'));
       } else if (!tokenStatus.tokenFileExists && !details.running) {
         console.log();
         console.log(chalk.yellow('⚠ No token file found'));
@@ -1788,8 +1817,8 @@ mahoraga
         console.log(chalk.green('✓ Mahoraga is running on port ' + MAHORAGA_PORT));
       } else if (details.authFailed) {
         console.log(chalk.red('✗ Mahoraga running but auth failed (token mismatch)'));
-        console.log(chalk.gray('  Fix: node src/index.js mahoraga restart'));
-        console.log(chalk.gray('  Debug: node src/index.js mahoraga status --debug'));
+        console.log(chalk.gray('  Fix: mahoraga bridge restart'));
+        console.log(chalk.gray('  Debug: mahoraga bridge status --debug'));
       } else {
         console.log(chalk.yellow('○ Mahoraga is not running'));
         console.log(chalk.gray('  Run "node src/index.js connect" to start it'));
@@ -1797,7 +1826,7 @@ mahoraga
     }
   });
 
-mahoraga
+bridgeCmd
   .command('start')
   .description('Start the mahoraga manually')
   .option('--force', 'Force restart even if already running')
@@ -1823,14 +1852,14 @@ mahoraga
       console.log(chalk.green('✓ Mahoraga started on port ' + MAHORAGA_PORT));
     } else if (newDetails.authFailed) {
       console.log(chalk.red('✗ Mahoraga started but auth failed'));
-      console.log(chalk.gray('  Run: node src/index.js mahoraga diagnose'));
+      console.log(chalk.gray('  Run: mahoraga bridge diagnose'));
     } else {
       console.log(chalk.red('✗ Failed to start mahoraga'));
-      console.log(chalk.gray('  Run: node src/index.js mahoraga diagnose'));
+      console.log(chalk.gray('  Run: mahoraga bridge diagnose'));
     }
   });
 
-mahoraga
+bridgeCmd
   .command('stop')
   .description('Stop the mahoraga')
   .action(() => {
@@ -1839,7 +1868,7 @@ mahoraga
     console.log(chalk.green('✓ Mahoraga stopped'));
   });
 
-mahoraga
+bridgeCmd
   .command('restart')
   .description('Restart the mahoraga (regenerates token)')
   .action(async () => {
@@ -1853,20 +1882,20 @@ mahoraga
       console.log(chalk.green('✓ Mahoraga restarted with fresh token'));
     } else if (details.authFailed) {
       console.log(chalk.red('✗ Mahoraga running but auth failed'));
-      console.log(chalk.gray('  Try: node src/index.js mahoraga diagnose'));
+      console.log(chalk.gray('  Try: mahoraga bridge diagnose'));
     } else {
       console.log(chalk.red('✗ Failed to restart mahoraga'));
-      console.log(chalk.gray('  Try: node src/index.js mahoraga diagnose'));
+      console.log(chalk.gray('  Try: mahoraga bridge diagnose'));
     }
   });
 
-mahoraga
+bridgeCmd
   .command('reconnect')
   .description('Reconnect to Figma (use if connection is stale)')
   .action(async () => {
     if (!isMahoragaRunning()) {
       console.log(chalk.yellow('○ Mahoraga is not running'));
-      console.log(chalk.gray('  Run "figma-ds-cli connect" first'));
+      console.log(chalk.gray('  Run "mahoraga connect" first'));
       return;
     }
     console.log(chalk.blue('Reconnecting to Figma...'));
@@ -1874,7 +1903,7 @@ mahoraga
       const reconnToken = getMahoragaToken();
       const reconnHeaders = {};
       if (reconnToken) reconnHeaders['X-Mahoraga-Token'] = reconnToken;
-      const response = await fetch(`http://localhost:${MAHORAGA_PORT}/reconnect`, { headers: reconnHeaders });
+      const response = await fetch(`http://${MAHORAGA_HOST}:${MAHORAGA_PORT}/reconnect`, { headers: reconnHeaders });
       const result = await response.json();
       if (result.error) {
         console.log(chalk.red('✗ Reconnect failed: ' + result.error));
@@ -1886,7 +1915,7 @@ mahoraga
     }
   });
 
-mahoraga
+bridgeCmd
   .command('diagnose')
   .description('Diagnose mahoraga connection issues')
   .action(async () => {
@@ -1933,7 +1962,7 @@ mahoraga
         console.log(chalk.green('   ✓ PID matches saved mahoraga PID'));
       } else if (savedPid) {
         console.log(chalk.yellow('   ⚠ PID mismatch! Saved: ' + savedPid + ', Actual: ' + portPid));
-        console.log(chalk.gray('     This may cause auth issues. Fix: "node src/index.js mahoraga restart"'));
+        console.log(chalk.gray('     This may cause auth issues. Fix: "mahoraga bridge restart"'));
       }
     } else {
       console.log(chalk.yellow('   ○ Port not in use (mahoraga not running)'));
@@ -1949,7 +1978,7 @@ mahoraga
       console.log(chalk.red('   ✗ Auth failed (403 Unauthorized)'));
       console.log(chalk.gray('     The mahoraga has a different token than the CLI.'));
       console.log(chalk.gray('     This happens when the mahoraga was started with an old token.'));
-      console.log(chalk.gray('     Fix: "node src/index.js mahoraga restart"'));
+      console.log(chalk.gray('     Fix: "mahoraga bridge restart"'));
     } else if (details.running) {
       console.log(chalk.green('   ✓ Authentication successful'));
     }
@@ -1980,7 +2009,7 @@ mahoraga
     if (details.running) {
       console.log(chalk.green('✓ Mahoraga is healthy'));
     } else if (details.authFailed) {
-      console.log(chalk.red('✗ Token mismatch - run: node src/index.js mahoraga restart'));
+      console.log(chalk.red('✗ Token mismatch - run: mahoraga bridge restart'));
     } else if (!tokenStatus.tokenFileExists) {
       console.log(chalk.red('✗ No token - run: node src/index.js connect'));
     } else {
@@ -2763,7 +2792,7 @@ return count;
     console.log(chalk.gray('    • Border Radii (none to full)'));
     console.log();
     console.log(chalk.gray('  Total: ~74 variables across 5 collections\n'));
-    console.log(chalk.gray('  Next: ') + chalk.cyan('figma-ds-cli tokens components') + chalk.gray(' to add UI components\n'));
+    console.log(chalk.gray('  Next: ') + chalk.cyan('mahoraga tokens components') + chalk.gray(' to add UI components\n'));
   });
 
 tokens
@@ -5292,6 +5321,79 @@ return {
   });
 
 exp
+  .command('selection')
+  .description('Export current selection as JSON for codegen (Cursor, React, etc.)')
+  .option('-o, --output <file>', 'Output JSON file', 'figma-selection.json')
+  .option('--no-bindings', 'Skip variable binding metadata')
+  .action(async (options) => {
+    await checkConnection();
+    const spinner = ora('Exporting selection from Figma...').start();
+    try {
+      const script = buildCodegenSelectionExportScript();
+      const raw = await mahoragaExec('eval', { code: script }, 120000);
+
+      let data;
+      if (typeof raw === 'string') {
+        try {
+          data = JSON.parse(raw);
+        } catch (e) {
+          spinner.fail('Invalid JSON from Figma');
+          console.error(chalk.red(raw.slice(0, 500)));
+          process.exit(1);
+        }
+      } else {
+        data = raw;
+      }
+
+      if (data && data.error) {
+        spinner.fail(data.error);
+        process.exit(1);
+      }
+
+      if (!data || !Array.isArray(data.nodes) || data.nodes.length === 0) {
+        spinner.fail('No nodes exported. Select one or more frames/components.');
+        process.exit(1);
+      }
+
+      if (options.bindings !== false) {
+        try {
+          const bindScript = buildVariableBindingsCaptureScript();
+          const bindRaw = await mahoragaExec('eval', { code: bindScript }, 20000);
+          let parsed = bindRaw;
+          if (typeof bindRaw === 'string') {
+            try {
+              parsed = JSON.parse(bindRaw);
+            } catch {
+              parsed = null;
+            }
+          }
+          if (parsed && !parsed.error && Array.isArray(parsed.bindings)) {
+            data.variableBindings = parsed.bindings;
+            if (parsed.basePersona) data.basePersona = parsed.basePersona;
+          }
+        } catch {
+          /* optional */
+        }
+      }
+
+      const outPath = options.output;
+      const json = JSON.stringify(data, null, 2);
+      writeFileSync(outPath, json, 'utf8');
+      spinner.succeed(
+        chalk.green(`Wrote ${data.nodes.length} root node(s) → ${outPath} (${(json.length / 1024).toFixed(1)} KB)`)
+      );
+      console.log(
+        chalk.gray(
+          '  Next: ask Cursor to generate React from this file, e.g. "Build components from figma-selection.json into src/components".'
+        )
+      );
+    } catch (e) {
+      spinner.fail(e.message || String(e));
+      process.exit(1);
+    }
+  });
+
+exp
   .command('node <nodeId>')
   .description('Export a node by ID as PNG')
   .option('-o, --output <file>', 'Output file', 'node-export.png')
@@ -7557,7 +7659,7 @@ figjam
       console.log();
     } catch (error) {
       console.log(chalk.red('\n✗ Could not connect to Figma\n'));
-      console.log(chalk.gray('  Make sure Figma is running with: figma-ds-cli connect\n'));
+      console.log(chalk.gray('  Make sure Figma is running with: mahoraga connect\n'));
     }
   });
 
@@ -8356,7 +8458,7 @@ blocksCmd
 
         // Write temp file and return path
         writeTemp: (name, content) => {
-          const tmpDir = join(homedir(), '.figma-ds-cli', 'tmp');
+          const tmpDir = join(CONFIG_DIR, 'tmp');
           if (!existsSync(tmpDir)) mkdirSync(tmpDir, { recursive: true });
           const tmpPath = join(tmpDir, name);
           writeFileSync(tmpPath, content);
@@ -8456,6 +8558,27 @@ dropCmd
 
       spinner.text = 'Saving drop...';
 
+      let variableBindings;
+      let basePersona;
+      try {
+        const bindScript = buildVariableBindingsCaptureScript();
+        const bindRaw = await mahoragaExec('eval', { code: bindScript }, 20000);
+        let parsed = bindRaw;
+        if (typeof bindRaw === 'string') {
+          try {
+            parsed = JSON.parse(bindRaw);
+          } catch {
+            parsed = null;
+          }
+        }
+        if (parsed && !parsed.error && Array.isArray(parsed.bindings)) {
+          variableBindings = parsed.bindings;
+          basePersona = parsed.basePersona;
+        }
+      } catch {
+        /* bindings optional */
+      }
+
       const aliases = options.alias ? options.alias.split(',').map(a => a.trim()) : [];
       const count = saveDrop({
         id,
@@ -8464,6 +8587,8 @@ dropCmd
         category: options.category || 'saved',
         description: options.description || `Saved from Figma: ${tree.name}`,
         tree,
+        variableBindings,
+        basePersona,
       });
 
       spinner.succeed(

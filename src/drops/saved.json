@@ -1547,37 +1547,36 @@
   },
   {
     "id": "persona-card",
-    "name": "persona-card",
+    "name": "persona card",
     "aliases": [],
     "category": "saved",
-    "description": "Saved from Figma: persona card",
+    "description": "Persona card with variable bindings",
     "tree": {
       "type": "FRAME",
       "name": "persona card",
       "w": 372,
-      "h": 467,
-      "x": 2924,
-      "y": 13349,
+      "h": 595,
+      "x": 4678,
+      "y": 10246,
       "fills": [
         {
           "type": "SOLID",
-          "r": 0.95,
-          "g": 1,
-          "b": 1
+          "r": 0.96,
+          "g": 0.94,
+          "b": 0.94
         }
       ],
       "cr": 20,
       "layout": "VERTICAL",
-      "crossAlign": "CENTER",
       "vSizing": "HUG",
       "clip": true,
       "effects": [
         {
           "type": "DROP_SHADOW",
           "color": {
-            "r": 0.76,
-            "g": 0.99,
-            "b": 0.98,
+            "r": 0.95,
+            "g": 0.86,
+            "b": 0.81,
             "a": 1
           },
           "offset": {
@@ -1600,99 +1599,94 @@
       "children": [
         {
           "type": "FRAME",
-          "name": "Frame 2087324194",
+          "name": "Frame 2087324266",
           "w": 372,
-          "h": 250,
+          "h": 271,
           "noFills": true,
           "layout": "VERTICAL",
-          "gap": -55,
-          "crossAlign": "CENTER",
           "hSizing": "FILL",
           "vSizing": "HUG",
           "children": [
             {
               "type": "FRAME",
-              "name": "Frame 2087324193",
+              "name": "Frame 2087324202",
               "w": 372,
-              "h": 205,
-              "fills": [
-                {
-                  "type": "SOLID",
-                  "r": 0.77,
-                  "g": 0.77,
-                  "b": 0.77
-                }
-              ],
-              "cr": 20,
+              "h": 107,
+              "noFills": true,
+              "layout": "VERTICAL",
+              "gap": -55,
+              "crossAlign": "CENTER",
               "hSizing": "FILL",
-              "clip": true
-            },
-            {
-              "type": "FRAME",
-              "name": "Frame 2087324192",
-              "w": 100,
-              "h": 100,
-              "x": 136,
-              "y": 150,
-              "fills": [
-                {
-                  "type": "SOLID",
-                  "r": 0.81,
-                  "g": 0.95,
-                  "b": 0.94
-                }
-              ],
-              "cr": 62,
+              "vSizing": "HUG",
               "clip": true,
-              "strokes": [
+              "children": [
                 {
-                  "type": "SOLID",
-                  "r": 0.3,
-                  "g": 0.7,
-                  "b": 0.68
+                  "type": "FRAME",
+                  "name": "bg",
+                  "w": 372,
+                  "h": 82,
+                  "noFills": true,
+                  "tl": 20,
+                  "tr": 20,
+                  "bl": 0,
+                  "br": 0,
+                  "clip": true
+                },
+                {
+                  "type": "FRAME",
+                  "name": "avatar",
+                  "w": 80,
+                  "h": 80,
+                  "x": 146,
+                  "y": 27,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "r": 0.95,
+                      "g": 0.86,
+                      "b": 0.81
+                    }
+                  ],
+                  "cr": 100,
+                  "clip": true,
+                  "strokes": [
+                    {
+                      "type": "SOLID",
+                      "r": 0.73,
+                      "g": 0.43,
+                      "b": 0.28
+                    }
+                  ],
+                  "sw": 3.200000286102295
                 }
-              ],
-              "sw": 4
-            }
-          ]
-        },
-        {
-          "type": "FRAME",
-          "name": "Frame 2087324201",
-          "w": 372,
-          "h": 217,
-          "y": 250,
-          "noFills": true,
-          "layout": "VERTICAL",
-          "gap": 20,
-          "pb": 32,
-          "hSizing": "FILL",
-          "vSizing": "HUG",
-          "children": [
+              ]
+            },
             {
               "type": "FRAME",
               "name": "Frame 2087324195",
               "w": 372,
-              "h": 108,
+              "h": 164,
+              "y": 107,
               "noFills": true,
               "layout": "VERTICAL",
               "gap": 10,
-              "pt": 12,
-              "pb": 12,
+              "pt": 20,
+              "pb": 20,
               "pl": 20,
               "pr": 20,
               "mainAlign": "CENTER",
               "crossAlign": "CENTER",
               "hSizing": "FILL",
               "vSizing": "HUG",
+              "clip": true,
               "children": [
                 {
                   "type": "TEXT",
-                  "name": "Calm Wisdom Seeker",
-                  "w": 266,
+                  "name": "Young Confidence Seeker",
+                  "w": 315,
                   "h": 34,
-                  "x": 53,
-                  "y": 12,
+                  "x": 29,
+                  "y": 20,
                   "fills": [
                     {
                       "type": "SOLID",
@@ -1703,7 +1697,7 @@
                   ],
                   "hSizing": "HUG",
                   "vSizing": "HUG",
-                  "chars": "Calm Wisdom Seeker",
+                  "chars": "Young Confidence Seeker",
                   "fontSize": 24,
                   "font": {
                     "family": "Platypi",
@@ -1722,11 +1716,11 @@
                 },
                 {
                   "type": "TEXT",
-                  "name": "You’re drawn to peace, gratitude, and being present in daily life.",
+                  "name": "You're stepping into your power and want to shake off self-doubt. Your affirmations will build bold self-belief, quiet inner criticism, and help you own every moment with confidence.",
                   "w": 332,
-                  "h": 40,
+                  "h": 80,
                   "x": 20,
-                  "y": 56,
+                  "y": 64,
                   "fills": [
                     {
                       "type": "SOLID",
@@ -1737,7 +1731,7 @@
                   ],
                   "hSizing": "FILL",
                   "vSizing": "HUG",
-                  "chars": "You’re drawn to peace, gratitude, and being present in daily life.",
+                  "chars": "You're stepping into your power and want to shake off self-doubt. Your affirmations will build bold self-belief, quiet inner criticism, and help you own every moment with confidence.",
                   "fontSize": 14,
                   "font": {
                     "family": "Inter",
@@ -1755,13 +1749,77 @@
                   "autoResize": "HEIGHT"
                 }
               ]
+            }
+          ]
+        },
+        {
+          "type": "FRAME",
+          "name": "Frame 2087324201",
+          "w": 372,
+          "h": 324,
+          "y": 271,
+          "noFills": true,
+          "layout": "VERTICAL",
+          "gap": 12,
+          "pt": 32,
+          "pb": 32,
+          "pl": 20,
+          "pr": 20,
+          "mainAlign": "CENTER",
+          "crossAlign": "CENTER",
+          "hSizing": "FILL",
+          "vSizing": "HUG",
+          "clip": true,
+          "strokes": [
+            {
+              "type": "SOLID",
+              "r": 0.93,
+              "g": 0.82,
+              "b": 0.77
+            }
+          ],
+          "children": [
+            {
+              "type": "TEXT",
+              "name": "Your affirmations will focus on",
+              "w": 332,
+              "h": 20,
+              "x": 20,
+              "y": 32,
+              "fills": [
+                {
+                  "type": "SOLID",
+                  "r": 0.4,
+                  "g": 0.4,
+                  "b": 0.4
+                }
+              ],
+              "hSizing": "FILL",
+              "vSizing": "HUG",
+              "chars": "Your affirmations will focus on",
+              "fontSize": 14,
+              "font": {
+                "family": "Inter",
+                "style": "Regular"
+              },
+              "textAlign": "CENTER",
+              "letterSpacing": {
+                "unit": "PERCENT",
+                "value": 1
+              },
+              "lineHeight": {
+                "unit": "PERCENT",
+                "value": 139.9999976158142
+              },
+              "autoResize": "HEIGHT"
             },
             {
               "type": "FRAME",
-              "name": "Frame 2087324200",
-              "w": 372,
-              "h": 57,
-              "y": 128,
+              "name": "tags",
+              "w": 332,
+              "h": 228,
+              "x": 20,
+              "y": 64,
               "noFills": true,
               "layout": "VERTICAL",
               "gap": 12,
@@ -1769,75 +1827,45 @@
               "crossAlign": "CENTER",
               "hSizing": "FILL",
               "vSizing": "HUG",
+              "clip": true,
               "children": [
                 {
-                  "type": "TEXT",
-                  "name": "Your affirmations will focus on",
-                  "w": 372,
-                  "h": 20,
+                  "type": "FRAME",
+                  "name": "Frame 2087324197",
+                  "w": 332,
+                  "h": 48,
                   "fills": [
                     {
                       "type": "SOLID",
-                      "r": 0.6,
-                      "g": 0.6,
-                      "b": 0.6
+                      "r": 0.93,
+                      "g": 0.82,
+                      "b": 0.77
                     }
                   ],
-                  "hSizing": "FILL",
-                  "vSizing": "HUG",
-                  "chars": "Your affirmations will focus on",
-                  "fontSize": 14,
-                  "font": {
-                    "family": "Inter",
-                    "style": "Regular"
-                  },
-                  "textAlign": "CENTER",
-                  "letterSpacing": {
-                    "unit": "PERCENT",
-                    "value": 1
-                  },
-                  "lineHeight": {
-                    "unit": "PERCENT",
-                    "value": 139.9999976158142
-                  },
-                  "autoResize": "HEIGHT"
-                },
-                {
-                  "type": "FRAME",
-                  "name": "tags",
-                  "w": 372,
-                  "h": 25,
-                  "y": 32,
-                  "noFills": true,
+                  "cr": 38,
                   "layout": "HORIZONTAL",
-                  "gap": 8,
-                  "mainAlign": "CENTER",
+                  "pt": 12,
+                  "pb": 12,
+                  "pl": 12,
+                  "pr": 12,
+                  "mainAlign": "SPACE_BETWEEN",
                   "crossAlign": "CENTER",
-                  "wrap": true,
                   "hSizing": "FILL",
                   "vSizing": "HUG",
+                  "clip": true,
                   "children": [
                     {
                       "type": "FRAME",
-                      "name": "Frame 2087324197",
-                      "w": 74,
-                      "h": 25,
-                      "x": 63,
-                      "fills": [
-                        {
-                          "type": "SOLID",
-                          "r": 0.81,
-                          "g": 0.95,
-                          "b": 0.94
-                        }
-                      ],
-                      "cr": 38,
+                      "name": "Frame 2087324262",
+                      "w": 119,
+                      "h": 20,
+                      "x": 12,
+                      "y": 14,
+                      "noFills": true,
                       "layout": "HORIZONTAL",
                       "gap": 10,
-                      "pt": 4,
-                      "pb": 4,
-                      "pl": 12,
-                      "pr": 12,
+                      "pl": 4,
+                      "pr": 4,
                       "mainAlign": "CENTER",
                       "crossAlign": "CENTER",
                       "hSizing": "HUG",
@@ -1845,23 +1873,22 @@
                       "children": [
                         {
                           "type": "TEXT",
-                          "name": "Serenity",
-                          "w": 50,
-                          "h": 17,
-                          "x": 12,
-                          "y": 4,
+                          "name": "Courage",
+                          "w": 111,
+                          "h": 20,
+                          "x": 4,
                           "fills": [
                             {
                               "type": "SOLID",
-                              "r": 0.31,
-                              "g": 0.4,
-                              "b": 0.4
+                              "r": 0.46,
+                              "g": 0.31,
+                              "b": 0.25
                             }
                           ],
                           "hSizing": "HUG",
                           "vSizing": "HUG",
-                          "chars": "Serenity",
-                          "fontSize": 12,
+                          "chars": "Self-confidence",
+                          "fontSize": 14,
                           "font": {
                             "family": "Inter",
                             "style": "Semi Bold"
@@ -1881,25 +1908,80 @@
                     },
                     {
                       "type": "FRAME",
-                      "name": "Frame 2087324198",
-                      "w": 73,
-                      "h": 25,
-                      "x": 145,
+                      "name": "si:close-fill",
+                      "w": 24,
+                      "h": 24,
+                      "x": 296,
+                      "y": 12,
                       "fills": [
                         {
                           "type": "SOLID",
-                          "r": 0.81,
-                          "g": 0.95,
-                          "b": 0.94
+                          "r": 1,
+                          "g": 1,
+                          "b": 1
                         }
                       ],
-                      "cr": 38,
+                      "clip": true,
+                      "children": [
+                        {
+                          "type": "VECTOR",
+                          "name": "Vector",
+                          "w": 11,
+                          "h": 11,
+                          "x": 7,
+                          "y": 7,
+                          "fills": [
+                            {
+                              "type": "SOLID",
+                              "r": 0.46,
+                              "g": 0.31,
+                              "b": 0.25
+                            }
+                          ],
+                          "svgData": "<svg width=\"11\" height=\"11\" viewBox=\"0 0 11 11\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M10.2053 1.71929C10.3874 1.53069 10.4882 1.27808 10.486 1.01589C10.4837 0.75369 10.3785 0.502878 10.1931 0.31747C10.0077 0.132062 9.75689 0.0268924 9.49469 0.0246139C9.23249 0.0223355 8.97989 0.12313 8.79129 0.305288L5.25529 3.84129L1.71929 0.305288C1.62704 0.209778 1.5167 0.133596 1.39469 0.0811869C1.27269 0.0287779 1.14147 0.00119157 1.00869 3.77571e-05C0.87591 -0.00111606 0.74423 0.0241854 0.621334 0.0744663C0.498438 0.124747 0.386786 0.199 0.292893 0.292893C0.199 0.386786 0.124747 0.498438 0.0744663 0.621334C0.0241854 0.74423 -0.00111606 0.87591 3.77571e-05 1.00869C0.00119157 1.14147 0.0287779 1.27269 0.0811869 1.39469C0.133596 1.5167 0.209778 1.62704 0.305288 1.71929L3.84129 5.25529L0.305288 8.79129C0.209778 8.88354 0.133596 8.99388 0.0811869 9.11588C0.0287779 9.23789 0.00119157 9.36911 3.77571e-05 9.50189C-0.00111606 9.63467 0.0241854 9.76634 0.0744663 9.88924C0.124747 10.0121 0.199 10.1238 0.292893 10.2177C0.386786 10.3116 0.498438 10.3858 0.621334 10.4361C0.74423 10.4864 0.87591 10.5117 1.00869 10.5105C1.14147 10.5094 1.27269 10.4818 1.39469 10.4294C1.5167 10.377 1.62704 10.3008 1.71929 10.2053L5.25529 6.66929L8.79129 10.2053C8.88354 10.3008 8.99388 10.377 9.11588 10.4294C9.23789 10.4818 9.36911 10.5094 9.50189 10.5105C9.63467 10.5117 9.76634 10.4864 9.88924 10.4361C10.0121 10.3858 10.1238 10.3116 10.2177 10.2177C10.3116 10.1238 10.3858 10.0121 10.4361 9.88924C10.4864 9.76634 10.5117 9.63467 10.5105 9.50189C10.5094 9.36911 10.4818 9.23789 10.4294 9.11588C10.377 8.99388 10.3008 8.88354 10.2053 8.79129L6.66929 5.25529L10.2053 1.71929Z\" fill=\"#74503E\"/>\n</svg>\n"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "FRAME",
+                  "name": "Frame 2087324198",
+                  "w": 332,
+                  "h": 48,
+                  "y": 60,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "r": 0.93,
+                      "g": 0.82,
+                      "b": 0.77
+                    }
+                  ],
+                  "cr": 38,
+                  "layout": "HORIZONTAL",
+                  "pt": 12,
+                  "pb": 12,
+                  "pl": 12,
+                  "pr": 12,
+                  "mainAlign": "SPACE_BETWEEN",
+                  "crossAlign": "CENTER",
+                  "hSizing": "FILL",
+                  "vSizing": "HUG",
+                  "clip": true,
+                  "children": [
+                    {
+                      "type": "FRAME",
+                      "name": "Frame 2087324264",
+                      "w": 131,
+                      "h": 20,
+                      "x": 12,
+                      "y": 14,
+                      "noFills": true,
                       "layout": "HORIZONTAL",
                       "gap": 10,
-                      "pt": 4,
-                      "pb": 4,
-                      "pl": 12,
-                      "pr": 12,
+                      "pl": 4,
+                      "pr": 4,
                       "mainAlign": "CENTER",
                       "crossAlign": "CENTER",
                       "hSizing": "HUG",
@@ -1907,23 +1989,22 @@
                       "children": [
                         {
                           "type": "TEXT",
-                          "name": "Wisdom",
-                          "w": 49,
-                          "h": 17,
-                          "x": 12,
-                          "y": 4,
+                          "name": "Exploration",
+                          "w": 123,
+                          "h": 20,
+                          "x": 4,
                           "fills": [
                             {
                               "type": "SOLID",
-                              "r": 0.31,
-                              "g": 0.4,
-                              "b": 0.4
+                              "r": 0.46,
+                              "g": 0.31,
+                              "b": 0.25
                             }
                           ],
                           "hSizing": "HUG",
                           "vSizing": "HUG",
-                          "chars": "Wisdom",
-                          "fontSize": 12,
+                          "chars": "Overcoming fears",
+                          "fontSize": 14,
                           "font": {
                             "family": "Inter",
                             "style": "Semi Bold"
@@ -1943,25 +2024,80 @@
                     },
                     {
                       "type": "FRAME",
-                      "name": "Frame 2087324199",
-                      "w": 84,
-                      "h": 25,
-                      "x": 226,
+                      "name": "si:close-fill",
+                      "w": 24,
+                      "h": 24,
+                      "x": 296,
+                      "y": 12,
                       "fills": [
                         {
                           "type": "SOLID",
-                          "r": 0.81,
-                          "g": 0.95,
-                          "b": 0.94
+                          "r": 1,
+                          "g": 1,
+                          "b": 1
                         }
                       ],
-                      "cr": 38,
+                      "clip": true,
+                      "children": [
+                        {
+                          "type": "VECTOR",
+                          "name": "Vector",
+                          "w": 11,
+                          "h": 11,
+                          "x": 7,
+                          "y": 7,
+                          "fills": [
+                            {
+                              "type": "SOLID",
+                              "r": 0.46,
+                              "g": 0.31,
+                              "b": 0.25
+                            }
+                          ],
+                          "svgData": "<svg width=\"11\" height=\"11\" viewBox=\"0 0 11 11\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M10.2053 1.71929C10.3874 1.53069 10.4882 1.27808 10.486 1.01589C10.4837 0.75369 10.3785 0.502878 10.1931 0.31747C10.0077 0.132062 9.75689 0.0268924 9.49469 0.0246139C9.23249 0.0223355 8.97989 0.12313 8.79129 0.305288L5.25529 3.84129L1.71929 0.305288C1.62704 0.209778 1.5167 0.133596 1.39469 0.0811869C1.27269 0.0287779 1.14147 0.00119157 1.00869 3.77571e-05C0.87591 -0.00111606 0.74423 0.0241854 0.621334 0.0744663C0.498438 0.124747 0.386786 0.199 0.292893 0.292893C0.199 0.386786 0.124747 0.498438 0.0744663 0.621334C0.0241854 0.74423 -0.00111606 0.87591 3.77571e-05 1.00869C0.00119157 1.14147 0.0287779 1.27269 0.0811869 1.39469C0.133596 1.5167 0.209778 1.62704 0.305288 1.71929L3.84129 5.25529L0.305288 8.79129C0.209778 8.88354 0.133596 8.99388 0.0811869 9.11588C0.0287779 9.23789 0.00119157 9.36911 3.77571e-05 9.50189C-0.00111606 9.63467 0.0241854 9.76634 0.0744663 9.88924C0.124747 10.0121 0.199 10.1238 0.292893 10.2177C0.386786 10.3116 0.498438 10.3858 0.621334 10.4361C0.74423 10.4864 0.87591 10.5117 1.00869 10.5105C1.14147 10.5094 1.27269 10.4818 1.39469 10.4294C1.5167 10.377 1.62704 10.3008 1.71929 10.2053L5.25529 6.66929L8.79129 10.2053C8.88354 10.3008 8.99388 10.377 9.11588 10.4294C9.23789 10.4818 9.36911 10.5094 9.50189 10.5105C9.63467 10.5117 9.76634 10.4864 9.88924 10.4361C10.0121 10.3858 10.1238 10.3116 10.2177 10.2177C10.3116 10.1238 10.3858 10.0121 10.4361 9.88924C10.4864 9.76634 10.5117 9.63467 10.5105 9.50189C10.5094 9.36911 10.4818 9.23789 10.4294 9.11588C10.377 8.99388 10.3008 8.88354 10.2053 8.79129L6.66929 5.25529L10.2053 1.71929Z\" fill=\"#74503E\"/>\n</svg>\n"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "FRAME",
+                  "name": "Frame 2087324199",
+                  "w": 332,
+                  "h": 48,
+                  "y": 120,
+                  "fills": [
+                    {
+                      "type": "SOLID",
+                      "r": 0.93,
+                      "g": 0.82,
+                      "b": 0.77
+                    }
+                  ],
+                  "cr": 38,
+                  "layout": "HORIZONTAL",
+                  "pt": 12,
+                  "pb": 12,
+                  "pl": 12,
+                  "pr": 12,
+                  "mainAlign": "SPACE_BETWEEN",
+                  "crossAlign": "CENTER",
+                  "hSizing": "FILL",
+                  "vSizing": "HUG",
+                  "clip": true,
+                  "children": [
+                    {
+                      "type": "FRAME",
+                      "name": "Frame 2087324263",
+                      "w": 180,
+                      "h": 20,
+                      "x": 12,
+                      "y": 14,
+                      "noFills": true,
                       "layout": "HORIZONTAL",
                       "gap": 10,
-                      "pt": 4,
-                      "pb": 4,
-                      "pl": 12,
-                      "pr": 12,
+                      "pl": 4,
+                      "pr": 4,
                       "mainAlign": "CENTER",
                       "crossAlign": "CENTER",
                       "hSizing": "HUG",
@@ -1969,23 +2105,176 @@
                       "children": [
                         {
                           "type": "TEXT",
-                          "name": "Reflection",
-                          "w": 60,
-                          "h": 17,
-                          "x": 12,
-                          "y": 4,
+                          "name": "Risk-taking",
+                          "w": 172,
+                          "h": 20,
+                          "x": 4,
                           "fills": [
                             {
                               "type": "SOLID",
-                              "r": 0.31,
-                              "g": 0.4,
-                              "b": 0.4
+                              "r": 0.46,
+                              "g": 0.31,
+                              "b": 0.25
                             }
                           ],
                           "hSizing": "HUG",
                           "vSizing": "HUG",
-                          "chars": "Reflection",
-                          "fontSize": 12,
+                          "chars": "Increase self-confidence",
+                          "fontSize": 14,
+                          "font": {
+                            "family": "Inter",
+                            "style": "Semi Bold"
+                          },
+                          "textAlign": "CENTER",
+                          "letterSpacing": {
+                            "unit": "PERCENT",
+                            "value": 1
+                          },
+                          "lineHeight": {
+                            "unit": "PERCENT",
+                            "value": 139.9999976158142
+                          },
+                          "autoResize": "WIDTH_AND_HEIGHT"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "FRAME",
+                      "name": "si:close-fill",
+                      "w": 24,
+                      "h": 24,
+                      "x": 296,
+                      "y": 12,
+                      "fills": [
+                        {
+                          "type": "SOLID",
+                          "r": 1,
+                          "g": 1,
+                          "b": 1
+                        }
+                      ],
+                      "clip": true,
+                      "children": [
+                        {
+                          "type": "VECTOR",
+                          "name": "Vector",
+                          "w": 11,
+                          "h": 11,
+                          "x": 7,
+                          "y": 7,
+                          "fills": [
+                            {
+                              "type": "SOLID",
+                              "r": 0.46,
+                              "g": 0.31,
+                              "b": 0.25
+                            }
+                          ],
+                          "svgData": "<svg width=\"11\" height=\"11\" viewBox=\"0 0 11 11\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M10.2053 1.71929C10.3874 1.53069 10.4882 1.27808 10.486 1.01589C10.4837 0.75369 10.3785 0.502878 10.1931 0.31747C10.0077 0.132062 9.75689 0.0268924 9.49469 0.0246139C9.23249 0.0223355 8.97989 0.12313 8.79129 0.305288L5.25529 3.84129L1.71929 0.305288C1.62704 0.209778 1.5167 0.133596 1.39469 0.0811869C1.27269 0.0287779 1.14147 0.00119157 1.00869 3.77571e-05C0.87591 -0.00111606 0.74423 0.0241854 0.621334 0.0744663C0.498438 0.124747 0.386786 0.199 0.292893 0.292893C0.199 0.386786 0.124747 0.498438 0.0744663 0.621334C0.0241854 0.74423 -0.00111606 0.87591 3.77571e-05 1.00869C0.00119157 1.14147 0.0287779 1.27269 0.0811869 1.39469C0.133596 1.5167 0.209778 1.62704 0.305288 1.71929L3.84129 5.25529L0.305288 8.79129C0.209778 8.88354 0.133596 8.99388 0.0811869 9.11588C0.0287779 9.23789 0.00119157 9.36911 3.77571e-05 9.50189C-0.00111606 9.63467 0.0241854 9.76634 0.0744663 9.88924C0.124747 10.0121 0.199 10.1238 0.292893 10.2177C0.386786 10.3116 0.498438 10.3858 0.621334 10.4361C0.74423 10.4864 0.87591 10.5117 1.00869 10.5105C1.14147 10.5094 1.27269 10.4818 1.39469 10.4294C1.5167 10.377 1.62704 10.3008 1.71929 10.2053L5.25529 6.66929L8.79129 10.2053C8.88354 10.3008 8.99388 10.377 9.11588 10.4294C9.23789 10.4818 9.36911 10.5094 9.50189 10.5105C9.63467 10.5117 9.76634 10.4864 9.88924 10.4361C10.0121 10.3858 10.1238 10.3116 10.2177 10.2177C10.3116 10.1238 10.3858 10.0121 10.4361 9.88924C10.4864 9.76634 10.5117 9.63467 10.5105 9.50189C10.5094 9.36911 10.4818 9.23789 10.4294 9.11588C10.377 8.99388 10.3008 8.88354 10.2053 8.79129L6.66929 5.25529L10.2053 1.71929Z\" fill=\"#74503E\"/>\n</svg>\n"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "FRAME",
+                  "name": "Frame 2087324200",
+                  "w": 332,
+                  "h": 48,
+                  "y": 180,
+                  "noFills": true,
+                  "cr": 38,
+                  "layout": "HORIZONTAL",
+                  "pt": 12,
+                  "pb": 12,
+                  "pl": 12,
+                  "pr": 12,
+                  "mainAlign": "CENTER",
+                  "crossAlign": "CENTER",
+                  "hSizing": "FILL",
+                  "vSizing": "HUG",
+                  "clip": true,
+                  "strokes": [
+                    {
+                      "type": "SOLID",
+                      "r": 0.46,
+                      "g": 0.28,
+                      "b": 0.25
+                    }
+                  ],
+                  "sw": 1,
+                  "children": [
+                    {
+                      "type": "FRAME",
+                      "name": "material-symbols:add-rounded",
+                      "w": 24,
+                      "h": 24,
+                      "x": 117,
+                      "y": 12,
+                      "fills": [
+                        {
+                          "type": "SOLID",
+                          "r": 1,
+                          "g": 1,
+                          "b": 1
+                        }
+                      ],
+                      "clip": true,
+                      "children": [
+                        {
+                          "type": "VECTOR",
+                          "name": "Vector",
+                          "w": 14,
+                          "h": 14,
+                          "x": 5,
+                          "y": 5,
+                          "fills": [
+                            {
+                              "type": "SOLID",
+                              "r": 0.46,
+                              "g": 0.28,
+                              "b": 0.25
+                            }
+                          ],
+                          "svgData": "<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M6 8H1C0.71667 8 0.479337 7.904 0.288004 7.712C0.0966702 7.52 0.000670115 7.28267 3.44827e-06 7C-0.000663218 6.71734 0.0953369 6.48 0.288004 6.288C0.48067 6.096 0.718003 6 1 6H6V1C6 0.71667 6.096 0.479337 6.288 0.288004C6.48 0.0966702 6.71734 0.000670115 7 3.44827e-06C7.28267 -0.000663218 7.52034 0.0953369 7.713 0.288004C7.90567 0.48067 8.00134 0.718003 8 1V6H13C13.2833 6 13.521 6.096 13.713 6.288C13.905 6.48 14.0007 6.71734 14 7C13.9993 7.28267 13.9033 7.52034 13.712 7.713C13.5207 7.90567 13.2833 8.00134 13 8H8V13C8 13.2833 7.904 13.521 7.712 13.713C7.52 13.905 7.28267 14.0007 7 14C6.71734 13.9993 6.48 13.9033 6.288 13.712C6.096 13.5207 6 13.2833 6 13V8Z\" fill=\"#74473E\"/>\n</svg>\n"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "FRAME",
+                      "name": "Frame 2087324263",
+                      "w": 75,
+                      "h": 20,
+                      "x": 141,
+                      "y": 14,
+                      "noFills": true,
+                      "layout": "HORIZONTAL",
+                      "gap": 10,
+                      "pl": 4,
+                      "pr": 4,
+                      "mainAlign": "CENTER",
+                      "crossAlign": "CENTER",
+                      "hSizing": "HUG",
+                      "vSizing": "HUG",
+                      "children": [
+                        {
+                          "type": "TEXT",
+                          "name": "Risk-taking",
+                          "w": 67,
+                          "h": 20,
+                          "x": 4,
+                          "fills": [
+                            {
+                              "type": "SOLID",
+                              "r": 0.46,
+                              "g": 0.28,
+                              "b": 0.25
+                            }
+                          ],
+                          "hSizing": "HUG",
+                          "vSizing": "HUG",
+                          "chars": "Add topic",
+                          "fontSize": 14,
                           "font": {
                             "family": "Inter",
                             "style": "Semi Bold"
@@ -2015,79 +2304,129 @@
       {
         "path": "persona card",
         "property": "fills[0]",
-        "variable": "persona-card/calm-wisdom-seeker/bg",
-        "suffix": "bg"
+        "variable": "persona-card/01-young-confidence-seeker/bg"
       },
       {
         "path": "persona card",
         "property": "effects[0]",
-        "variable": "persona-card/calm-wisdom-seeker/shadow-color",
-        "suffix": "shadow-color"
+        "variable": "persona-card/01-young-confidence-seeker/shadow-color"
       },
       {
-        "path": "persona card > Frame 2087324194 > Frame 2087324192",
+        "path": "persona card > Frame 2087324266 > Frame 2087324202 > avatar",
         "property": "fills[0]",
-        "variable": "persona-card/calm-wisdom-seeker/profile-color",
-        "suffix": "profile-color"
+        "variable": "persona-card/01-young-confidence-seeker/shadow-color"
       },
       {
-        "path": "persona card > Frame 2087324194 > Frame 2087324192",
+        "path": "persona card > Frame 2087324266 > Frame 2087324202 > avatar",
         "property": "strokes[0]",
-        "variable": "persona-card/calm-wisdom-seeker/profile-border",
-        "suffix": "profile-border"
+        "variable": "persona-card/01-young-confidence-seeker/profile-border"
       },
       {
-        "path": "persona card > Frame 2087324201 > Frame 2087324195 > Calm Wisdom Seeker",
+        "path": "persona card > Frame 2087324266 > Frame 2087324195 > Young Confidence Seeker",
+        "property": "characters",
+        "variable": "persona-card/01-young-confidence-seeker/name"
+      },
+      {
+        "path": "persona card > Frame 2087324266 > Frame 2087324195 > Young Confidence Seeker",
         "property": "fills[0]",
         "variable": "typography/primary"
       },
       {
-        "path": "persona card > Frame 2087324201 > Frame 2087324195 > You\"re drawn to peace, gratitude, and being present in daily life.",
+        "path": "persona card > Frame 2087324266 > Frame 2087324195 > You're stepping into your power and want to shake off self-doubt. Your affirmations will build bold self-belief, quiet inner criticism, and help you own every moment with confidence.",
+        "property": "characters",
+        "variable": "persona-card/01-young-confidence-seeker/description"
+      },
+      {
+        "path": "persona card > Frame 2087324266 > Frame 2087324195 > You're stepping into your power and want to shake off self-doubt. Your affirmations will build bold self-belief, quiet inner criticism, and help you own every moment with confidence.",
         "property": "fills[0]",
         "variable": "typography/secondary"
       },
       {
-        "path": "persona card > Frame 2087324201 > Frame 2087324200 > Your affirmations will focus on",
-        "property": "fills[0]",
-        "variable": "typography/tertiary"
+        "path": "persona card > Frame 2087324201",
+        "property": "strokes[0]",
+        "variable": "persona-card/01-young-confidence-seeker/tag-bg"
       },
       {
-        "path": "persona card > Frame 2087324201 > Frame 2087324200 > tags > Frame 2087324197",
+        "path": "persona card > Frame 2087324201 > Your affirmations will focus on",
         "property": "fills[0]",
-        "variable": "persona-card/calm-wisdom-seeker/tag-bg",
-        "suffix": "tag-bg"
+        "variable": "typography/secondary"
       },
       {
-        "path": "persona card > Frame 2087324201 > Frame 2087324200 > tags > Frame 2087324197 > Serenity",
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324197",
         "property": "fills[0]",
-        "variable": "persona-card/calm-wisdom-seeker/tag",
-        "suffix": "tag"
+        "variable": "persona-card/01-young-confidence-seeker/tag-bg"
       },
       {
-        "path": "persona card > Frame 2087324201 > Frame 2087324200 > tags > Frame 2087324198",
-        "property": "fills[0]",
-        "variable": "persona-card/calm-wisdom-seeker/tag-bg",
-        "suffix": "tag-bg"
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324197 > Frame 2087324262 > Courage",
+        "property": "characters",
+        "variable": "persona-card/01-young-confidence-seeker/tag1"
       },
       {
-        "path": "persona card > Frame 2087324201 > Frame 2087324200 > tags > Frame 2087324198 > Wisdom",
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324197 > Frame 2087324262 > Courage",
         "property": "fills[0]",
-        "variable": "persona-card/calm-wisdom-seeker/tag",
-        "suffix": "tag"
+        "variable": "persona-card/01-young-confidence-seeker/tag"
       },
       {
-        "path": "persona card > Frame 2087324201 > Frame 2087324200 > tags > Frame 2087324199",
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324197 > si:close-fill > Vector",
         "property": "fills[0]",
-        "variable": "persona-card/calm-wisdom-seeker/tag-bg",
-        "suffix": "tag-bg"
+        "variable": "persona-card/01-young-confidence-seeker/tag"
       },
       {
-        "path": "persona card > Frame 2087324201 > Frame 2087324200 > tags > Frame 2087324199 > Reflection",
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324198",
         "property": "fills[0]",
-        "variable": "persona-card/calm-wisdom-seeker/tag",
-        "suffix": "tag"
+        "variable": "persona-card/01-young-confidence-seeker/tag-bg"
+      },
+      {
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324198 > Frame 2087324264 > Exploration",
+        "property": "characters",
+        "variable": "persona-card/01-young-confidence-seeker/tag2"
+      },
+      {
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324198 > Frame 2087324264 > Exploration",
+        "property": "fills[0]",
+        "variable": "persona-card/01-young-confidence-seeker/tag"
+      },
+      {
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324198 > si:close-fill > Vector",
+        "property": "fills[0]",
+        "variable": "persona-card/01-young-confidence-seeker/tag"
+      },
+      {
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324199",
+        "property": "fills[0]",
+        "variable": "persona-card/01-young-confidence-seeker/tag-bg"
+      },
+      {
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324199 > Frame 2087324263 > Risk-taking",
+        "property": "characters",
+        "variable": "persona-card/01-young-confidence-seeker/tag3"
+      },
+      {
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324199 > Frame 2087324263 > Risk-taking",
+        "property": "fills[0]",
+        "variable": "persona-card/01-young-confidence-seeker/tag"
+      },
+      {
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324199 > si:close-fill > Vector",
+        "property": "fills[0]",
+        "variable": "persona-card/01-young-confidence-seeker/tag"
+      },
+      {
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324200",
+        "property": "strokes[0]",
+        "variable": "persona-card/01-young-confidence-seeker/tag"
+      },
+      {
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324200 > material-symbols:add-rounded > Vector",
+        "property": "fills[0]",
+        "variable": "persona-card/01-young-confidence-seeker/tag"
+      },
+      {
+        "path": "persona card > Frame 2087324201 > tags > Frame 2087324200 > Frame 2087324263 > Risk-taking",
+        "property": "fills[0]",
+        "variable": "persona-card/01-young-confidence-seeker/tag"
       }
     ],
-    "basePersona": "calm-wisdom-seeker"
+    "basePersona": "01-young-confidence-seeker"
   }
 ]

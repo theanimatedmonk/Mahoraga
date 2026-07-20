@@ -22,7 +22,7 @@ NC='\033[0m'
 # ── Config helpers ──
 
 get_mahoraga_token() {
-    local token_file="$HOME/.figma-ds-cli/.mahoraga-token"
+    local token_file="$HOME/.mahoraga/.mahoraga-token"
     if [ -f "$token_file" ]; then
         cat "$token_file" 2>/dev/null
     fi

@@ -1,4 +1,4 @@
-# figma-ds-cli Command Reference
+# mahoraga Command Reference
 
 Full command reference for the Figma CLI. For quick start, see CLAUDE.md.
 
@@ -290,14 +290,14 @@ Registry: `src/drops/index.js` (built-in) + `src/drops/saved.json` (user-saved)
 ```bash
 node src/index.js connect                    # Connect (Yolo Mode)
 node src/index.js connect --safe             # Connect (Safe Mode, plugin)
-node src/index.js mahoraga status            # Check mahoraga status
-node src/index.js mahoraga status --debug    # Detailed token & connection info
-node src/index.js mahoraga diagnose          # Full diagnostic (troubleshooting)
-node src/index.js mahoraga start             # Start mahoraga manually
-node src/index.js mahoraga start --force     # Force restart
-node src/index.js mahoraga restart           # Restart with fresh token
-node src/index.js mahoraga stop              # Stop mahoraga
-node src/index.js mahoraga reconnect         # Reconnect to Figma
+node src/index.js bridge status              # Check Mahoraga bridge status
+node src/index.js bridge status --debug      # Detailed token & connection info
+node src/index.js bridge diagnose            # Full diagnostic (troubleshooting)
+node src/index.js bridge start               # Start bridge manually
+node src/index.js bridge start --force       # Force restart
+node src/index.js bridge restart             # Restart with fresh token
+node src/index.js bridge stop                # Stop bridge
+node src/index.js bridge reconnect           # Reconnect to Figma
 node src/index.js files                      # List open Figma files (JSON)
 ```
 
@@ -306,11 +306,11 @@ node src/index.js files                      # List open Figma files (JSON)
 If you see "Unauthorized: Invalid or missing token":
 
 ```bash
-node src/index.js mahoraga diagnose          # See what's wrong
-node src/index.js mahoraga restart           # Usually fixes it
+node src/index.js bridge diagnose            # See what's wrong
+node src/index.js bridge restart             # Usually fixes it
 ```
 
-Token file location: `~/.figma-ds-cli/.mahoraga-token`
+Token file location: `~/.mahoraga/.mahoraga-token` (legacy: `~/.figma-ds-cli/.mahoraga-token`, migrated on read)
 
 ## Component Combinations (combos)
 

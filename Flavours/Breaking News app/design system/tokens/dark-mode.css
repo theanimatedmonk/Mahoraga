@@ -1,0 +1,13 @@
+/* Breaking News Launcher — Dark mode tokens */
+/* Note: dark screens not present in section; inferred for handoff */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bnl-background: #121212;
+    --bnl-surface: #1e1e1e;
+    --bnl-surface-alt: #2a2a2a;
+    --bnl-text-primary: #f5f5f5;
+    --bnl-text-secondary: #b3b3b3;
+    --bnl-border: #3a3a3a;
+    --bnl-accent: #ef5350;
+  }
+}

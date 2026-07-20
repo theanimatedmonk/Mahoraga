@@ -198,8 +198,8 @@ Available: `dashboard-01`
 |---------|-------------|
 | `connect` | Connect to Figma (Yolo Mode) |
 | `connect --safe` | Connect to Figma (Safe Mode, plugin) |
-| `mahoraga status` | Check if Mahoraga is running |
-| `mahoraga restart` | Restart with fresh token |
+| `bridge status` | Check if Mahoraga bridge is running |
+| `bridge restart` | Restart with fresh token |
 | `mahoraga diagnose` | Diagnose connection issues |
 | `files` | List open Figma design files |
 | `diagnose` | Check system compatibility |
