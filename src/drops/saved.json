@@ -1547,17 +1547,17 @@
   },
   {
     "id": "persona-card",
-    "name": "persona card",
+    "name": "persona-card",
     "aliases": [],
     "category": "saved",
     "description": "Persona card with variable bindings",
     "tree": {
       "type": "FRAME",
-      "name": "persona card",
-      "w": 372,
-      "h": 595,
-      "x": 4678,
-      "y": 10246,
+      "name": "Persona · 02 — Calm Learner",
+      "w": 373,
+      "h": 517,
+      "x": 869,
+      "y": 338,
       "fills": [
         {
           "type": "SOLID",
@@ -1566,16 +1566,15 @@
           "b": 0.94
         }
       ],
-      "cr": 20,
+      "cr": 40,
       "layout": "VERTICAL",
       "vSizing": "HUG",
-      "clip": true,
       "effects": [
         {
           "type": "DROP_SHADOW",
           "color": {
             "r": 0.95,
-            "g": 0.86,
+            "g": 0.83,
             "b": 0.81,
             "a": 1
           },
@@ -1600,73 +1599,24 @@
         {
           "type": "FRAME",
           "name": "Frame 2087324266",
-          "w": 372,
-          "h": 271,
+          "w": 371,
+          "h": 188,
+          "x": 1,
+          "y": 1,
           "noFills": true,
           "layout": "VERTICAL",
+          "pt": 44,
+          "pb": 20,
           "hSizing": "FILL",
           "vSizing": "HUG",
+          "clip": true,
           "children": [
             {
               "type": "FRAME",
-              "name": "Frame 2087324202",
-              "w": 372,
-              "h": 107,
-              "noFills": true,
-              "layout": "VERTICAL",
-              "gap": -55,
-              "crossAlign": "CENTER",
-              "hSizing": "FILL",
-              "vSizing": "HUG",
-              "clip": true,
-              "children": [
-                {
-                  "type": "FRAME",
-                  "name": "bg",
-                  "w": 372,
-                  "h": 82,
-                  "noFills": true,
-                  "tl": 20,
-                  "tr": 20,
-                  "bl": 0,
-                  "br": 0,
-                  "clip": true
-                },
-                {
-                  "type": "FRAME",
-                  "name": "avatar",
-                  "w": 80,
-                  "h": 80,
-                  "x": 146,
-                  "y": 27,
-                  "fills": [
-                    {
-                      "type": "SOLID",
-                      "r": 0.95,
-                      "g": 0.86,
-                      "b": 0.81
-                    }
-                  ],
-                  "cr": 100,
-                  "clip": true,
-                  "strokes": [
-                    {
-                      "type": "SOLID",
-                      "r": 0.73,
-                      "g": 0.43,
-                      "b": 0.28
-                    }
-                  ],
-                  "sw": 3.200000286102295
-                }
-              ]
-            },
-            {
-              "type": "FRAME",
               "name": "Frame 2087324195",
-              "w": 372,
-              "h": 164,
-              "y": 107,
+              "w": 371,
+              "h": 124,
+              "y": 44,
               "noFills": true,
               "layout": "VERTICAL",
               "gap": 10,
@@ -1683,9 +1633,9 @@
                 {
                   "type": "TEXT",
                   "name": "Young Confidence Seeker",
-                  "w": 315,
+                  "w": 167,
                   "h": 34,
-                  "x": 29,
+                  "x": 102,
                   "y": 20,
                   "fills": [
                     {
@@ -1697,7 +1647,7 @@
                   ],
                   "hSizing": "HUG",
                   "vSizing": "HUG",
-                  "chars": "Young Confidence Seeker",
+                  "chars": "Calm Learner",
                   "fontSize": 24,
                   "font": {
                     "family": "Platypi",
@@ -1717,8 +1667,8 @@
                 {
                   "type": "TEXT",
                   "name": "You're stepping into your power and want to shake off self-doubt. Your affirmations will build bold self-belief, quiet inner criticism, and help you own every moment with confidence.",
-                  "w": 332,
-                  "h": 80,
+                  "w": 331,
+                  "h": 40,
                   "x": 20,
                   "y": 64,
                   "fills": [
@@ -1731,7 +1681,7 @@
                   ],
                   "hSizing": "FILL",
                   "vSizing": "HUG",
-                  "chars": "You're stepping into your power and want to shake off self-doubt. Your affirmations will build bold self-belief, quiet inner criticism, and help you own every moment with confidence.",
+                  "chars": "Someone looking for something deeper, meaningful, and quietly yours.",
                   "fontSize": 14,
                   "font": {
                     "family": "Inter",
@@ -1754,10 +1704,11 @@
         },
         {
           "type": "FRAME",
-          "name": "Frame 2087324201",
-          "w": 372,
-          "h": 324,
-          "y": 271,
+          "name": "tag holder",
+          "w": 371,
+          "h": 327,
+          "x": 1,
+          "y": 189,
           "noFills": true,
           "layout": "VERTICAL",
           "gap": 12,
@@ -1774,7 +1725,7 @@
             {
               "type": "SOLID",
               "r": 0.93,
-              "g": 0.82,
+              "g": 0.8,
               "b": 0.77
             }
           ],
@@ -1782,10 +1733,10 @@
             {
               "type": "TEXT",
               "name": "Your affirmations will focus on",
-              "w": 332,
+              "w": 331,
               "h": 20,
               "x": 20,
-              "y": 32,
+              "y": 33,
               "fills": [
                 {
                   "type": "SOLID",
@@ -1816,10 +1767,10 @@
             {
               "type": "FRAME",
               "name": "tags",
-              "w": 332,
-              "h": 228,
+              "w": 331,
+              "h": 230,
               "x": 20,
-              "y": 64,
+              "y": 65,
               "noFills": true,
               "layout": "VERTICAL",
               "gap": 12,
@@ -1832,13 +1783,13 @@
                 {
                   "type": "FRAME",
                   "name": "Frame 2087324197",
-                  "w": 332,
+                  "w": 331,
                   "h": 48,
                   "fills": [
                     {
                       "type": "SOLID",
                       "r": 0.93,
-                      "g": 0.82,
+                      "g": 0.8,
                       "b": 0.77
                     }
                   ],
@@ -1857,7 +1808,7 @@
                     {
                       "type": "FRAME",
                       "name": "Frame 2087324262",
-                      "w": 119,
+                      "w": 146,
                       "h": 20,
                       "x": 12,
                       "y": 14,
@@ -1870,24 +1821,25 @@
                       "crossAlign": "CENTER",
                       "hSizing": "HUG",
                       "vSizing": "HUG",
+                      "clip": true,
                       "children": [
                         {
                           "type": "TEXT",
                           "name": "Courage",
-                          "w": 111,
+                          "w": 138,
                           "h": 20,
                           "x": 4,
                           "fills": [
                             {
                               "type": "SOLID",
                               "r": 0.46,
-                              "g": 0.31,
+                              "g": 0.28,
                               "b": 0.25
                             }
                           ],
                           "hSizing": "HUG",
                           "vSizing": "HUG",
-                          "chars": "Self-confidence",
+                          "chars": "Stress management",
                           "fontSize": 14,
                           "font": {
                             "family": "Inter",
@@ -1911,16 +1863,9 @@
                       "name": "si:close-fill",
                       "w": 24,
                       "h": 24,
-                      "x": 296,
+                      "x": 295,
                       "y": 12,
-                      "fills": [
-                        {
-                          "type": "SOLID",
-                          "r": 1,
-                          "g": 1,
-                          "b": 1
-                        }
-                      ],
+                      "noFills": true,
                       "clip": true,
                       "children": [
                         {
@@ -1934,11 +1879,11 @@
                             {
                               "type": "SOLID",
                               "r": 0.46,
-                              "g": 0.31,
+                              "g": 0.28,
                               "b": 0.25
                             }
                           ],
-                          "svgData": "<svg width=\"11\" height=\"11\" viewBox=\"0 0 11 11\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M10.2053 1.71929C10.3874 1.53069 10.4882 1.27808 10.486 1.01589C10.4837 0.75369 10.3785 0.502878 10.1931 0.31747C10.0077 0.132062 9.75689 0.0268924 9.49469 0.0246139C9.23249 0.0223355 8.97989 0.12313 8.79129 0.305288L5.25529 3.84129L1.71929 0.305288C1.62704 0.209778 1.5167 0.133596 1.39469 0.0811869C1.27269 0.0287779 1.14147 0.00119157 1.00869 3.77571e-05C0.87591 -0.00111606 0.74423 0.0241854 0.621334 0.0744663C0.498438 0.124747 0.386786 0.199 0.292893 0.292893C0.199 0.386786 0.124747 0.498438 0.0744663 0.621334C0.0241854 0.74423 -0.00111606 0.87591 3.77571e-05 1.00869C0.00119157 1.14147 0.0287779 1.27269 0.0811869 1.39469C0.133596 1.5167 0.209778 1.62704 0.305288 1.71929L3.84129 5.25529L0.305288 8.79129C0.209778 8.88354 0.133596 8.99388 0.0811869 9.11588C0.0287779 9.23789 0.00119157 9.36911 3.77571e-05 9.50189C-0.00111606 9.63467 0.0241854 9.76634 0.0744663 9.88924C0.124747 10.0121 0.199 10.1238 0.292893 10.2177C0.386786 10.3116 0.498438 10.3858 0.621334 10.4361C0.74423 10.4864 0.87591 10.5117 1.00869 10.5105C1.14147 10.5094 1.27269 10.4818 1.39469 10.4294C1.5167 10.377 1.62704 10.3008 1.71929 10.2053L5.25529 6.66929L8.79129 10.2053C8.88354 10.3008 8.99388 10.377 9.11588 10.4294C9.23789 10.4818 9.36911 10.5094 9.50189 10.5105C9.63467 10.5117 9.76634 10.4864 9.88924 10.4361C10.0121 10.3858 10.1238 10.3116 10.2177 10.2177C10.3116 10.1238 10.3858 10.0121 10.4361 9.88924C10.4864 9.76634 10.5117 9.63467 10.5105 9.50189C10.5094 9.36911 10.4818 9.23789 10.4294 9.11588C10.377 8.99388 10.3008 8.88354 10.2053 8.79129L6.66929 5.25529L10.2053 1.71929Z\" fill=\"#74503E\"/>\n</svg>\n"
+                          "svgData": "<svg width=\"11\" height=\"11\" viewBox=\"0 0 11 11\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M10.6805 1.79935C10.8711 1.60197 10.9766 1.3376 10.9743 1.0632C10.9719 0.788788 10.8618 0.526296 10.6678 0.332254C10.4737 0.138212 10.2113 0.0281447 9.93684 0.0257601C9.66243 0.0233756 9.39807 0.128864 9.20069 0.319505L5.50002 4.02017L1.79935 0.319505C1.70281 0.219547 1.58733 0.139817 1.45964 0.0849676C1.33196 0.030118 1.19463 0.00124706 1.05566 3.95154e-05C0.9167 -0.00116803 0.778889 0.0253117 0.650269 0.0779341C0.521649 0.130556 0.404798 0.208267 0.306533 0.306533C0.208267 0.404798 0.130556 0.521649 0.0779341 0.650269C0.0253117 0.778889 -0.00116803 0.9167 3.95154e-05 1.05566C0.00124706 1.19463 0.030118 1.33196 0.0849676 1.45964C0.139817 1.58733 0.219547 1.70281 0.319505 1.79935L4.02017 5.50002L0.319505 9.20069C0.219547 9.29723 0.139817 9.41271 0.0849676 9.54039C0.030118 9.66808 0.00124706 9.80541 3.95154e-05 9.94438C-0.00116803 10.0833 0.0253117 10.2212 0.0779341 10.3498C0.130556 10.4783 0.208267 10.5952 0.306533 10.6935C0.404798 10.7918 0.521649 10.8695 0.650269 10.9221C0.778889 10.9747 0.9167 11.0012 1.05566 11C1.19463 10.9988 1.33196 10.9699 1.45964 10.9151C1.58733 10.8602 1.70281 10.7805 1.79935 10.6805L5.50002 6.97987L9.20069 10.6805C9.29723 10.7805 9.41271 10.8602 9.54039 10.9151C9.66808 10.9699 9.80541 10.9988 9.94438 11C10.0833 11.0012 10.2212 10.9747 10.3498 10.9221C10.4783 10.8695 10.5952 10.7918 10.6935 10.6935C10.7918 10.5952 10.8695 10.4783 10.9221 10.3498C10.9747 10.2212 11.0012 10.0833 11 9.94438C10.9988 9.80541 10.9699 9.66808 10.9151 9.54039C10.8602 9.41271 10.7805 9.29723 10.6805 9.20069L6.97987 5.50002L10.6805 1.79935Z\" fill=\"#74473E\"/>\n</svg>\n"
                         }
                       ]
                     }
@@ -1947,14 +1892,14 @@
                 {
                   "type": "FRAME",
                   "name": "Frame 2087324198",
-                  "w": 332,
+                  "w": 331,
                   "h": 48,
                   "y": 60,
                   "fills": [
                     {
                       "type": "SOLID",
                       "r": 0.93,
-                      "g": 0.82,
+                      "g": 0.8,
                       "b": 0.77
                     }
                   ],
@@ -1973,7 +1918,7 @@
                     {
                       "type": "FRAME",
                       "name": "Frame 2087324264",
-                      "w": 131,
+                      "w": 137,
                       "h": 20,
                       "x": 12,
                       "y": 14,
@@ -1986,24 +1931,25 @@
                       "crossAlign": "CENTER",
                       "hSizing": "HUG",
                       "vSizing": "HUG",
+                      "clip": true,
                       "children": [
                         {
                           "type": "TEXT",
                           "name": "Exploration",
-                          "w": 123,
+                          "w": 129,
                           "h": 20,
                           "x": 4,
                           "fills": [
                             {
                               "type": "SOLID",
                               "r": 0.46,
-                              "g": 0.31,
+                              "g": 0.28,
                               "b": 0.25
                             }
                           ],
                           "hSizing": "HUG",
                           "vSizing": "HUG",
-                          "chars": "Overcoming fears",
+                          "chars": "Time management",
                           "fontSize": 14,
                           "font": {
                             "family": "Inter",
@@ -2027,16 +1973,9 @@
                       "name": "si:close-fill",
                       "w": 24,
                       "h": 24,
-                      "x": 296,
+                      "x": 295,
                       "y": 12,
-                      "fills": [
-                        {
-                          "type": "SOLID",
-                          "r": 1,
-                          "g": 1,
-                          "b": 1
-                        }
-                      ],
+                      "noFills": true,
                       "clip": true,
                       "children": [
                         {
@@ -2050,11 +1989,11 @@
                             {
                               "type": "SOLID",
                               "r": 0.46,
-                              "g": 0.31,
+                              "g": 0.28,
                               "b": 0.25
                             }
                           ],
-                          "svgData": "<svg width=\"11\" height=\"11\" viewBox=\"0 0 11 11\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M10.2053 1.71929C10.3874 1.53069 10.4882 1.27808 10.486 1.01589C10.4837 0.75369 10.3785 0.502878 10.1931 0.31747C10.0077 0.132062 9.75689 0.0268924 9.49469 0.0246139C9.23249 0.0223355 8.97989 0.12313 8.79129 0.305288L5.25529 3.84129L1.71929 0.305288C1.62704 0.209778 1.5167 0.133596 1.39469 0.0811869C1.27269 0.0287779 1.14147 0.00119157 1.00869 3.77571e-05C0.87591 -0.00111606 0.74423 0.0241854 0.621334 0.0744663C0.498438 0.124747 0.386786 0.199 0.292893 0.292893C0.199 0.386786 0.124747 0.498438 0.0744663 0.621334C0.0241854 0.74423 -0.00111606 0.87591 3.77571e-05 1.00869C0.00119157 1.14147 0.0287779 1.27269 0.0811869 1.39469C0.133596 1.5167 0.209778 1.62704 0.305288 1.71929L3.84129 5.25529L0.305288 8.79129C0.209778 8.88354 0.133596 8.99388 0.0811869 9.11588C0.0287779 9.23789 0.00119157 9.36911 3.77571e-05 9.50189C-0.00111606 9.63467 0.0241854 9.76634 0.0744663 9.88924C0.124747 10.0121 0.199 10.1238 0.292893 10.2177C0.386786 10.3116 0.498438 10.3858 0.621334 10.4361C0.74423 10.4864 0.87591 10.5117 1.00869 10.5105C1.14147 10.5094 1.27269 10.4818 1.39469 10.4294C1.5167 10.377 1.62704 10.3008 1.71929 10.2053L5.25529 6.66929L8.79129 10.2053C8.88354 10.3008 8.99388 10.377 9.11588 10.4294C9.23789 10.4818 9.36911 10.5094 9.50189 10.5105C9.63467 10.5117 9.76634 10.4864 9.88924 10.4361C10.0121 10.3858 10.1238 10.3116 10.2177 10.2177C10.3116 10.1238 10.3858 10.0121 10.4361 9.88924C10.4864 9.76634 10.5117 9.63467 10.5105 9.50189C10.5094 9.36911 10.4818 9.23789 10.4294 9.11588C10.377 8.99388 10.3008 8.88354 10.2053 8.79129L6.66929 5.25529L10.2053 1.71929Z\" fill=\"#74503E\"/>\n</svg>\n"
+                          "svgData": "<svg width=\"11\" height=\"11\" viewBox=\"0 0 11 11\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M10.6805 1.79935C10.8711 1.60197 10.9766 1.3376 10.9743 1.0632C10.9719 0.788788 10.8618 0.526296 10.6678 0.332254C10.4737 0.138212 10.2113 0.0281447 9.93684 0.0257601C9.66243 0.0233756 9.39807 0.128864 9.20069 0.319505L5.50002 4.02017L1.79935 0.319505C1.70281 0.219547 1.58733 0.139817 1.45964 0.0849676C1.33196 0.030118 1.19463 0.00124706 1.05566 3.95154e-05C0.9167 -0.00116803 0.778889 0.0253117 0.650269 0.0779341C0.521649 0.130556 0.404798 0.208267 0.306533 0.306533C0.208267 0.404798 0.130556 0.521649 0.0779341 0.650269C0.0253117 0.778889 -0.00116803 0.9167 3.95154e-05 1.05566C0.00124706 1.19463 0.030118 1.33196 0.0849676 1.45964C0.139817 1.58733 0.219547 1.70281 0.319505 1.79935L4.02017 5.50002L0.319505 9.20069C0.219547 9.29723 0.139817 9.41271 0.0849676 9.54039C0.030118 9.66808 0.00124706 9.80541 3.95154e-05 9.94438C-0.00116803 10.0833 0.0253117 10.2212 0.0779341 10.3498C0.130556 10.4783 0.208267 10.5952 0.306533 10.6935C0.404798 10.7918 0.521649 10.8695 0.650269 10.9221C0.778889 10.9747 0.9167 11.0012 1.05566 11C1.19463 10.9988 1.33196 10.9699 1.45964 10.9151C1.58733 10.8602 1.70281 10.7805 1.79935 10.6805L5.50002 6.97987L9.20069 10.6805C9.29723 10.7805 9.41271 10.8602 9.54039 10.9151C9.66808 10.9699 9.80541 10.9988 9.94438 11C10.0833 11.0012 10.2212 10.9747 10.3498 10.9221C10.4783 10.8695 10.5952 10.7918 10.6935 10.6935C10.7918 10.5952 10.8695 10.4783 10.9221 10.3498C10.9747 10.2212 11.0012 10.0833 11 9.94438C10.9988 9.80541 10.9699 9.66808 10.9151 9.54039C10.8602 9.41271 10.7805 9.29723 10.6805 9.20069L6.97987 5.50002L10.6805 1.79935Z\" fill=\"#74473E\"/>\n</svg>\n"
                         }
                       ]
                     }
@@ -2063,14 +2002,14 @@
                 {
                   "type": "FRAME",
                   "name": "Frame 2087324199",
-                  "w": 332,
+                  "w": 331,
                   "h": 48,
                   "y": 120,
                   "fills": [
                     {
                       "type": "SOLID",
                       "r": 0.93,
-                      "g": 0.82,
+                      "g": 0.8,
                       "b": 0.77
                     }
                   ],
@@ -2089,7 +2028,7 @@
                     {
                       "type": "FRAME",
                       "name": "Frame 2087324263",
-                      "w": 180,
+                      "w": 168,
                       "h": 20,
                       "x": 12,
                       "y": 14,
@@ -2102,24 +2041,25 @@
                       "crossAlign": "CENTER",
                       "hSizing": "HUG",
                       "vSizing": "HUG",
+                      "clip": true,
                       "children": [
                         {
                           "type": "TEXT",
                           "name": "Risk-taking",
-                          "w": 172,
+                          "w": 160,
                           "h": 20,
                           "x": 4,
                           "fills": [
                             {
                               "type": "SOLID",
                               "r": 0.46,
-                              "g": 0.31,
+                              "g": 0.28,
                               "b": 0.25
                             }
                           ],
                           "hSizing": "HUG",
                           "vSizing": "HUG",
-                          "chars": "Increase self-confidence",
+                          "chars": "Focus on mental health",
                           "fontSize": 14,
                           "font": {
                             "family": "Inter",
@@ -2143,16 +2083,9 @@
                       "name": "si:close-fill",
                       "w": 24,
                       "h": 24,
-                      "x": 296,
+                      "x": 295,
                       "y": 12,
-                      "fills": [
-                        {
-                          "type": "SOLID",
-                          "r": 1,
-                          "g": 1,
-                          "b": 1
-                        }
-                      ],
+                      "noFills": true,
                       "clip": true,
                       "children": [
                         {
@@ -2166,11 +2099,11 @@
                             {
                               "type": "SOLID",
                               "r": 0.46,
-                              "g": 0.31,
+                              "g": 0.28,
                               "b": 0.25
                             }
                           ],
-                          "svgData": "<svg width=\"11\" height=\"11\" viewBox=\"0 0 11 11\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M10.2053 1.71929C10.3874 1.53069 10.4882 1.27808 10.486 1.01589C10.4837 0.75369 10.3785 0.502878 10.1931 0.31747C10.0077 0.132062 9.75689 0.0268924 9.49469 0.0246139C9.23249 0.0223355 8.97989 0.12313 8.79129 0.305288L5.25529 3.84129L1.71929 0.305288C1.62704 0.209778 1.5167 0.133596 1.39469 0.0811869C1.27269 0.0287779 1.14147 0.00119157 1.00869 3.77571e-05C0.87591 -0.00111606 0.74423 0.0241854 0.621334 0.0744663C0.498438 0.124747 0.386786 0.199 0.292893 0.292893C0.199 0.386786 0.124747 0.498438 0.0744663 0.621334C0.0241854 0.74423 -0.00111606 0.87591 3.77571e-05 1.00869C0.00119157 1.14147 0.0287779 1.27269 0.0811869 1.39469C0.133596 1.5167 0.209778 1.62704 0.305288 1.71929L3.84129 5.25529L0.305288 8.79129C0.209778 8.88354 0.133596 8.99388 0.0811869 9.11588C0.0287779 9.23789 0.00119157 9.36911 3.77571e-05 9.50189C-0.00111606 9.63467 0.0241854 9.76634 0.0744663 9.88924C0.124747 10.0121 0.199 10.1238 0.292893 10.2177C0.386786 10.3116 0.498438 10.3858 0.621334 10.4361C0.74423 10.4864 0.87591 10.5117 1.00869 10.5105C1.14147 10.5094 1.27269 10.4818 1.39469 10.4294C1.5167 10.377 1.62704 10.3008 1.71929 10.2053L5.25529 6.66929L8.79129 10.2053C8.88354 10.3008 8.99388 10.377 9.11588 10.4294C9.23789 10.4818 9.36911 10.5094 9.50189 10.5105C9.63467 10.5117 9.76634 10.4864 9.88924 10.4361C10.0121 10.3858 10.1238 10.3116 10.2177 10.2177C10.3116 10.1238 10.3858 10.0121 10.4361 9.88924C10.4864 9.76634 10.5117 9.63467 10.5105 9.50189C10.5094 9.36911 10.4818 9.23789 10.4294 9.11588C10.377 8.99388 10.3008 8.88354 10.2053 8.79129L6.66929 5.25529L10.2053 1.71929Z\" fill=\"#74503E\"/>\n</svg>\n"
+                          "svgData": "<svg width=\"11\" height=\"11\" viewBox=\"0 0 11 11\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M10.6805 1.79935C10.8711 1.60197 10.9766 1.3376 10.9743 1.0632C10.9719 0.788788 10.8618 0.526296 10.6678 0.332254C10.4737 0.138212 10.2113 0.0281447 9.93684 0.0257601C9.66243 0.0233756 9.39807 0.128864 9.20069 0.319505L5.50002 4.02017L1.79935 0.319505C1.70281 0.219547 1.58733 0.139817 1.45964 0.0849676C1.33196 0.030118 1.19463 0.00124706 1.05566 3.95154e-05C0.9167 -0.00116803 0.778889 0.0253117 0.650269 0.0779341C0.521649 0.130556 0.404798 0.208267 0.306533 0.306533C0.208267 0.404798 0.130556 0.521649 0.0779341 0.650269C0.0253117 0.778889 -0.00116803 0.9167 3.95154e-05 1.05566C0.00124706 1.19463 0.030118 1.33196 0.0849676 1.45964C0.139817 1.58733 0.219547 1.70281 0.319505 1.79935L4.02017 5.50002L0.319505 9.20069C0.219547 9.29723 0.139817 9.41271 0.0849676 9.54039C0.030118 9.66808 0.00124706 9.80541 3.95154e-05 9.94438C-0.00116803 10.0833 0.0253117 10.2212 0.0779341 10.3498C0.130556 10.4783 0.208267 10.5952 0.306533 10.6935C0.404798 10.7918 0.521649 10.8695 0.650269 10.9221C0.778889 10.9747 0.9167 11.0012 1.05566 11C1.19463 10.9988 1.33196 10.9699 1.45964 10.9151C1.58733 10.8602 1.70281 10.7805 1.79935 10.6805L5.50002 6.97987L9.20069 10.6805C9.29723 10.7805 9.41271 10.8602 9.54039 10.9151C9.66808 10.9699 9.80541 10.9988 9.94438 11C10.0833 11.0012 10.2212 10.9747 10.3498 10.9221C10.4783 10.8695 10.5952 10.7918 10.6935 10.6935C10.7918 10.5952 10.8695 10.4783 10.9221 10.3498C10.9747 10.2212 11.0012 10.0833 11 9.94438C10.9988 9.80541 10.9699 9.66808 10.9151 9.54039C10.8602 9.41271 10.7805 9.29723 10.6805 9.20069L6.97987 5.50002L10.6805 1.79935Z\" fill=\"#74473E\"/>\n</svg>\n"
                         }
                       ]
                     }
@@ -2179,8 +2112,8 @@
                 {
                   "type": "FRAME",
                   "name": "Frame 2087324200",
-                  "w": 332,
-                  "h": 48,
+                  "w": 331,
+                  "h": 50,
                   "y": 180,
                   "noFills": true,
                   "cr": 38,
@@ -2209,16 +2142,9 @@
                       "name": "material-symbols:add-rounded",
                       "w": 24,
                       "h": 24,
-                      "x": 117,
-                      "y": 12,
-                      "fills": [
-                        {
-                          "type": "SOLID",
-                          "r": 1,
-                          "g": 1,
-                          "b": 1
-                        }
-                      ],
+                      "x": 116,
+                      "y": 13,
+                      "noFills": true,
                       "clip": true,
                       "children": [
                         {
@@ -2245,8 +2171,8 @@
                       "name": "Frame 2087324263",
                       "w": 75,
                       "h": 20,
-                      "x": 141,
-                      "y": 14,
+                      "x": 140,
+                      "y": 15,
                       "noFills": true,
                       "layout": "HORIZONTAL",
                       "gap": 10,
@@ -2256,6 +2182,7 @@
                       "crossAlign": "CENTER",
                       "hSizing": "HUG",
                       "vSizing": "HUG",
+                      "clip": true,
                       "children": [
                         {
                           "type": "TEXT",
@@ -2273,7 +2200,7 @@
                           ],
                           "hSizing": "HUG",
                           "vSizing": "HUG",
-                          "chars": "Add topic",
+                          "chars": "Add More",
                           "fontSize": 14,
                           "font": {
                             "family": "Inter",
@@ -2297,136 +2224,156 @@
               ]
             }
           ]
+        },
+        {
+          "type": "FRAME",
+          "name": "avatar",
+          "w": 80,
+          "h": 80,
+          "x": 147,
+          "y": -28,
+          "fills": [
+            {
+              "type": "IMAGE",
+              "scaleMode": "FILL"
+            }
+          ],
+          "cr": 111.1111068725586,
+          "absolute": true,
+          "constraints": {
+            "horizontal": "CENTER",
+            "vertical": "MIN"
+          },
+          "clip": true,
+          "strokes": [
+            {
+              "type": "SOLID",
+              "r": 0.73,
+              "g": 0.35,
+              "b": 0.28
+            }
+          ],
+          "sw": 3.200000047683716
         }
       ]
     },
     "variableBindings": [
       {
-        "path": "persona card",
+        "path": "Persona · 02 — Calm Learner",
         "property": "fills[0]",
-        "variable": "persona-card/01-young-confidence-seeker/bg"
+        "variable": "persona-card/02-calm-learner/bg"
       },
       {
-        "path": "persona card",
+        "path": "Persona · 02 — Calm Learner",
         "property": "effects[0]",
-        "variable": "persona-card/01-young-confidence-seeker/shadow-color"
+        "variable": "persona-card/02-calm-learner/shadow-color"
       },
       {
-        "path": "persona card > Frame 2087324266 > Frame 2087324202 > avatar",
-        "property": "fills[0]",
-        "variable": "persona-card/01-young-confidence-seeker/shadow-color"
-      },
-      {
-        "path": "persona card > Frame 2087324266 > Frame 2087324202 > avatar",
-        "property": "strokes[0]",
-        "variable": "persona-card/01-young-confidence-seeker/profile-border"
-      },
-      {
-        "path": "persona card > Frame 2087324266 > Frame 2087324195 > Young Confidence Seeker",
+        "path": "Persona · 02 — Calm Learner > Frame 2087324266 > Frame 2087324195 > Young Confidence Seeker",
         "property": "characters",
-        "variable": "persona-card/01-young-confidence-seeker/name"
+        "variable": "persona-card/02-calm-learner/name"
       },
       {
-        "path": "persona card > Frame 2087324266 > Frame 2087324195 > Young Confidence Seeker",
+        "path": "Persona · 02 — Calm Learner > Frame 2087324266 > Frame 2087324195 > Young Confidence Seeker",
         "property": "fills[0]",
         "variable": "typography/primary"
       },
       {
-        "path": "persona card > Frame 2087324266 > Frame 2087324195 > You're stepping into your power and want to shake off self-doubt. Your affirmations will build bold self-belief, quiet inner criticism, and help you own every moment with confidence.",
-        "property": "characters",
-        "variable": "persona-card/01-young-confidence-seeker/description"
-      },
-      {
-        "path": "persona card > Frame 2087324266 > Frame 2087324195 > You're stepping into your power and want to shake off self-doubt. Your affirmations will build bold self-belief, quiet inner criticism, and help you own every moment with confidence.",
+        "path": "Persona · 02 — Calm Learner > Frame 2087324266 > Frame 2087324195 > You're stepping into your power and want to shake off self-doubt. Your affirmations will build bold self-belief, quiet inner criticism, and help you own every moment with confidence.",
         "property": "fills[0]",
         "variable": "typography/secondary"
       },
       {
-        "path": "persona card > Frame 2087324201",
+        "path": "Persona · 02 — Calm Learner > tag holder",
         "property": "strokes[0]",
-        "variable": "persona-card/01-young-confidence-seeker/tag-bg"
+        "variable": "persona-card/02-calm-learner/tag-bg"
       },
       {
-        "path": "persona card > Frame 2087324201 > Your affirmations will focus on",
+        "path": "Persona · 02 — Calm Learner > tag holder > Your affirmations will focus on",
         "property": "fills[0]",
         "variable": "typography/secondary"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324197",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324197",
         "property": "fills[0]",
-        "variable": "persona-card/01-young-confidence-seeker/tag-bg"
+        "variable": "persona-card/02-calm-learner/tag-bg"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324197 > Frame 2087324262 > Courage",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324197 > Frame 2087324262 > Courage",
         "property": "characters",
-        "variable": "persona-card/01-young-confidence-seeker/tag1"
+        "variable": "persona-card/02-calm-learner/tag1"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324197 > Frame 2087324262 > Courage",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324197 > Frame 2087324262 > Courage",
         "property": "fills[0]",
-        "variable": "persona-card/01-young-confidence-seeker/tag"
+        "variable": "persona-card/02-calm-learner/tag"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324197 > si:close-fill > Vector",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324197 > si:close-fill > Vector",
         "property": "fills[0]",
-        "variable": "persona-card/01-young-confidence-seeker/tag"
+        "variable": "persona-card/02-calm-learner/tag"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324198",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324198",
         "property": "fills[0]",
-        "variable": "persona-card/01-young-confidence-seeker/tag-bg"
+        "variable": "persona-card/02-calm-learner/tag-bg"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324198 > Frame 2087324264 > Exploration",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324198 > Frame 2087324264 > Exploration",
         "property": "characters",
-        "variable": "persona-card/01-young-confidence-seeker/tag2"
+        "variable": "persona-card/02-calm-learner/tag2"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324198 > Frame 2087324264 > Exploration",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324198 > Frame 2087324264 > Exploration",
         "property": "fills[0]",
-        "variable": "persona-card/01-young-confidence-seeker/tag"
+        "variable": "persona-card/02-calm-learner/tag"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324198 > si:close-fill > Vector",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324198 > si:close-fill > Vector",
         "property": "fills[0]",
-        "variable": "persona-card/01-young-confidence-seeker/tag"
+        "variable": "persona-card/02-calm-learner/tag"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324199",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324199",
         "property": "fills[0]",
-        "variable": "persona-card/01-young-confidence-seeker/tag-bg"
+        "variable": "persona-card/02-calm-learner/tag-bg"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324199 > Frame 2087324263 > Risk-taking",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324199 > Frame 2087324263 > Risk-taking",
         "property": "characters",
-        "variable": "persona-card/01-young-confidence-seeker/tag3"
+        "variable": "persona-card/02-calm-learner/tag3"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324199 > Frame 2087324263 > Risk-taking",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324199 > Frame 2087324263 > Risk-taking",
         "property": "fills[0]",
-        "variable": "persona-card/01-young-confidence-seeker/tag"
+        "variable": "persona-card/02-calm-learner/tag"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324199 > si:close-fill > Vector",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324199 > si:close-fill > Vector",
         "property": "fills[0]",
-        "variable": "persona-card/01-young-confidence-seeker/tag"
+        "variable": "persona-card/02-calm-learner/tag"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324200",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324200",
         "property": "strokes[0]",
-        "variable": "persona-card/01-young-confidence-seeker/tag"
+        "variable": "persona-card/02-calm-learner/tag"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324200 > material-symbols:add-rounded > Vector",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324200 > material-symbols:add-rounded > Vector",
         "property": "fills[0]",
-        "variable": "persona-card/01-young-confidence-seeker/tag"
+        "variable": "persona-card/02-calm-learner/tag"
       },
       {
-        "path": "persona card > Frame 2087324201 > tags > Frame 2087324200 > Frame 2087324263 > Risk-taking",
+        "path": "Persona · 02 — Calm Learner > tag holder > tags > Frame 2087324200 > Frame 2087324263 > Risk-taking",
         "property": "fills[0]",
-        "variable": "persona-card/01-young-confidence-seeker/tag"
+        "variable": "persona-card/02-calm-learner/tag"
+      },
+      {
+        "path": "Persona · 02 — Calm Learner > avatar",
+        "property": "strokes[0]",
+        "variable": "persona-card/02-calm-learner/profile-border"
       }
     ],
-    "basePersona": "01-young-confidence-seeker"
+    "basePersona": "02-calm-learner"
   }
 ]

@@ -136,6 +136,19 @@ export function buildSerializerScript() {
       if (node.layoutSizingVertical !== "FIXED") o.vSizing = node.layoutSizingVertical;
     }
     if ('layoutGrow' in node && node.layoutGrow === 1) o.grow = 1;
+    if ('layoutPositioning' in node && node.layoutPositioning === 'ABSOLUTE') {
+      o.absolute = true;
+      // Always keep x/y for absolute children (including 0 / negative)
+      o.x = Math.round(node.x);
+      o.y = Math.round(node.y);
+      if ('constraints' in node) {
+        const ch = node.constraints.horizontal;
+        const cv = node.constraints.vertical;
+        if (ch !== 'MIN' || cv !== 'MIN') {
+          o.constraints = { horizontal: ch, vertical: cv };
+        }
+      }
+    }
     if ('clipsContent' in node && node.clipsContent) o.clip = true;
 
     // Effects
@@ -565,6 +578,16 @@ export function generateDropCode(tree, options = {}) {
     if (node.hSizing && !isBoolean) code += `${indent}${v}.layoutSizingHorizontal = "${node.hSizing}";\n`;
     if (node.vSizing && !isBoolean) code += `${indent}${v}.layoutSizingVertical = "${node.vSizing}";\n`;
     if (node.grow && !isBoolean) code += `${indent}${v}.layoutGrow = 1;\n`;
+
+    // Absolute positioning must be set AFTER appendChild (parent needs auto-layout)
+    if (node.absolute && !isBoolean) {
+      code += `${indent}${v}.layoutPositioning = "ABSOLUTE";\n`;
+      if (node.x !== undefined) code += `${indent}${v}.x = ${node.x};\n`;
+      if (node.y !== undefined) code += `${indent}${v}.y = ${node.y};\n`;
+      if (node.constraints) {
+        code += `${indent}${v}.constraints = ${JSON.stringify(node.constraints)};\n`;
+      }
+    }
 
     // ── Boolean operations ──
     if (isBoolean && node.children?.length > 0) {

@@ -23,9 +23,6 @@ const OUT = join(__dirname, '.generated-drop-20-persona.js');
 const OUT_RENAME = join(__dirname, '.generated-rename-persona-cards.js');
 const PERSONA_SLUGS = join(__dirname, 'persona-card-slugs.json');
 
-/** Saved template root name — variable binding paths start with this. */
-const TEMPLATE_ROOT = 'persona card';
-
 function deepClone(o) {
   return JSON.parse(JSON.stringify(o));
 }
@@ -56,10 +53,10 @@ function remapBindings(bindings, targetSlug) {
 }
 
 /** Binding paths are rooted at the frame name; keep them in sync when renaming. */
-function rebaseBindingPaths(bindings, newRootName) {
+function rebaseBindingPaths(bindings, templateRoot, newRootName) {
   return bindings.map((b) => {
-    if (!b.path.startsWith(TEMPLATE_ROOT)) return { ...b };
-    const suffix = b.path === TEMPLATE_ROOT ? '' : b.path.slice(TEMPLATE_ROOT.length);
+    if (!b.path.startsWith(templateRoot)) return { ...b };
+    const suffix = b.path === templateRoot ? '' : b.path.slice(templateRoot.length);
     return { ...b, path: newRootName + suffix };
   });
 }
@@ -80,7 +77,7 @@ function emitRenameEval(slugs) {
   const names = ${inner};
   var startX = ${startX}, startY = ${startY}, maxX = ${maxX}, maxY = ${maxY};
   var all = figma.currentPage.children.filter(function (n) {
-    return n.type === 'FRAME' && n.name === ${JSON.stringify(TEMPLATE_ROOT)};
+    return n.type === 'FRAME' && /^Persona · \\d{2}/.test(n.name);
   });
   var cards = all.filter(function (n) {
     return n.x >= startX - 100 && n.x <= maxX && n.y >= startY - 100 && n.y <= maxY;
@@ -94,7 +91,7 @@ function emitRenameEval(slugs) {
   });
   if (cards.length < names.length) {
     return {
-      error: 'Need at least ' + names.length + " frames named 'persona card'; found " + cards.length + ' on page.',
+      error: 'Need at least ' + names.length + ' Persona frames; found ' + cards.length + ' on page.',
       hint: 'Create cards with drop-20-persona-cards, or temporarily move extras off this page.',
     };
   }
@@ -128,6 +125,7 @@ function main() {
   }
 
   const bindingsBase = entry.variableBindings || [];
+  const templateRoot = entry.tree.name;
 
   const cardW = entry.tree.w || 372;
   const cardH = entry.tree.h || 595;
@@ -148,7 +146,11 @@ function main() {
     const rootName = personaCardFrameName(slug);
     tree.name = rootName;
 
-    const variableBindings = rebaseBindingPaths(remapBindings(bindingsBase, slug), rootName);
+    const variableBindings = rebaseBindingPaths(
+      remapBindings(bindingsBase, slug),
+      templateRoot,
+      rootName
+    );
     const piece = generateDropCode(tree, { variableBindings });
     pieces.push(`  results.push(await ${piece});`);
   }
