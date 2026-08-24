@@ -28,15 +28,22 @@ python3 -m playwright install chromium
 
 ## Output layout
 
+Screenshots are saved on disk under the **current working directory** (usually the project root):
+
 ```
-captures/<host>/
-├── manifest.json      # full run metadata
-├── sitemap.json       # machine-readable URL list
-├── sitemap.md         # human-readable sitemap + shot index
-└── screenshots/
+captures/<host>/                 ← e.g. captures/stripe.com/
+├── manifest.json
+├── sitemap.json
+├── sitemap.md
+└── screenshots/                 ← PNGs live here
     ├── 00-home.png
     └── 01-about.png
 ```
+
+- **Not** uploaded to GitHub (`captures/` is gitignored)
+- **Not** on the Figma canvas until you paste them (see skill `paste-images-to-figma`)
+
+To put shots on the canvas after capture, use **paste-images-to-figma**.
 
 ## Workflow
 
@@ -111,4 +118,5 @@ Do not dump the entire sitemap into chat unless they ask — point to `sitemap.m
 - Output under `captures/` is gitignored — do not commit screenshots unless the user asks
 - Stay same-origin; do not follow external links
 - For a **single** page only: `--max-pages 1`
-- Existing CLI `screenshot-url` imports one shot into Figma; this skill is for disk capture + sitemap
+- Disk only by default — paste onto Figma with skill **paste-images-to-figma**
+- Existing CLI `screenshot-url` imports one live URL shot straight into Figma (no sitemap)
