@@ -6,6 +6,14 @@ node_modules/
 screenshot.png
 nul
 
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Playwright URL captures (screenshots + sitemaps)
+captures/
+
 # Generated topic icons (remove if you want PNGs in git)
 assets/topic-images/*.png
 assets/topic-icons/*.svg
