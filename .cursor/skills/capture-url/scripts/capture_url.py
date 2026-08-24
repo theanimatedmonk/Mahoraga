@@ -165,6 +165,97 @@ def safe_filename(url: str, index: int) -> str:
     return name + ".png"
 
 
+def auto_scroll(page, pause_ms: int = 150) -> None:
+    """Scroll window + nested overflow containers so lazy content loads."""
+    page.evaluate(
+        """async (pauseMs) => {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const scrollEl = async (el) => {
+        const max = Math.max(0, (el.scrollHeight || 0) - (el.clientHeight || 0));
+        if (max <= 0) return;
+        const step = Math.max(200, Math.floor((el.clientHeight || 400) * 0.8));
+        for (let y = 0; y <= max; y += step) {
+          el.scrollTop = y;
+          await sleep(pauseMs);
+        }
+        el.scrollTop = 0;
+      };
+      await scrollEl(document.scrollingElement || document.documentElement);
+      const nodes = [...document.querySelectorAll('*')];
+      for (const el of nodes) {
+        const style = getComputedStyle(el);
+        const oy = style.overflowY;
+        if ((oy === 'auto' || oy === 'scroll' || oy === 'overlay') && el.scrollHeight > el.clientHeight + 80) {
+          await scrollEl(el);
+        }
+      }
+    }""",
+        pause_ms,
+    )
+
+
+def expand_for_full_page(page) -> dict:
+    """Unlock nested scrollers (Framer etc.) so full_page screenshots aren't cropped."""
+    return page.evaluate(
+        """() => {
+      const touched = [];
+      const unlock = (el, why) => {
+        if (!el || el.dataset.captureUnlock) return;
+        el.dataset.captureUnlock = '1';
+        const cs = getComputedStyle(el);
+        el.style.setProperty('overflow', 'visible', 'important');
+        el.style.setProperty('overflow-x', 'visible', 'important');
+        el.style.setProperty('overflow-y', 'visible', 'important');
+        el.style.setProperty('max-height', 'none', 'important');
+        el.style.setProperty('height', 'auto', 'important');
+        touched.push({ why, tag: el.tagName, cls: (el.className || '').toString().slice(0, 60), before: { oy: cs.overflowY, sh: el.scrollHeight, ch: el.clientHeight } });
+      };
+
+      unlock(document.documentElement, 'html');
+      unlock(document.body, 'body');
+
+      for (const el of document.querySelectorAll('*')) {
+        const cs = getComputedStyle(el);
+        const oy = cs.overflowY;
+        const tall = el.scrollHeight > el.clientHeight + 80;
+        const viewportLocked = el.clientHeight >= window.innerHeight - 4 && el.clientHeight <= window.innerHeight + 4 && el.scrollHeight > window.innerHeight + 80;
+        if (tall && (oy === 'auto' || oy === 'scroll' || oy === 'overlay' || oy === 'hidden')) {
+          unlock(el, 'scroller');
+        } else if (viewportLocked) {
+          unlock(el, 'viewport-lock');
+        }
+      }
+
+      // Force layout reflow
+      void document.body.offsetHeight;
+      return {
+        docHeight: document.documentElement.scrollHeight,
+        bodyHeight: document.body.scrollHeight,
+        unlocked: touched.length,
+      };
+    }"""
+    )
+
+
+def take_screenshot(page, path: Path, full_page: bool, wait_ms: int) -> dict:
+    """Scroll, expand crop-prone layouts, then screenshot."""
+    meta = {"expanded": None}
+    if full_page:
+        auto_scroll(page, pause_ms=max(80, min(200, wait_ms // 10 or 80)))
+        page.wait_for_timeout(min(500, wait_ms))
+        meta["expanded"] = expand_for_full_page(page)
+        page.wait_for_timeout(300)
+        # If still ~viewport tall, try one more expand pass after settling
+        h = page.evaluate("() => document.documentElement.scrollHeight")
+        vh = page.evaluate("() => window.innerHeight")
+        if h <= vh + 20:
+            meta["expanded"] = expand_for_full_page(page)
+            page.wait_for_timeout(200)
+    page.evaluate("() => { window.scrollTo(0, 0); (document.scrollingElement || document.documentElement).scrollTop = 0; }")
+    page.screenshot(path=str(path), full_page=full_page)
+    return meta
+
+
 def capture(
     url: str,
     out_dir: Path,
@@ -223,8 +314,13 @@ def capture(
                 title = page.title()
                 fname = safe_filename(page_url, i)
                 fpath = shots_dir / fname
-                page.screenshot(path=str(fpath), full_page=full_page)
-                entry.update(ok=True, title=title, path=str(fpath.relative_to(out_dir)))
+                shot_meta = take_screenshot(page, fpath, full_page=full_page, wait_ms=wait_ms)
+                entry.update(
+                    ok=True,
+                    title=title,
+                    path=str(fpath.relative_to(out_dir)),
+                    expand=shot_meta.get("expanded"),
+                )
 
                 if discovery == "crawl" and i == 0 and max_pages > 1:
                     crawl_extra = crawl_links(page, seed, max_pages - 1)

@@ -120,3 +120,5 @@ Do not dump the entire sitemap into chat unless they ask — point to `sitemap.m
 - For a **single** page only: `--max-pages 1`
 - Disk only by default — paste onto Figma with skill **paste-images-to-figma**
 - Existing CLI `screenshot-url` imports one live URL shot straight into Figma (no sitemap)
+- Full-page mode **scrolls** the window + nested overflow containers, then unlocks Framer-style
+  crop locks before capturing (avoids viewport-only crops)
